@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #090B10;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Custom scrollbars for DJ tables and crates */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #090B10;
+}
+::-webkit-scrollbar-thumb {
+  background: #252B36;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+/* Vinyl groove texture overlay */
+.vinyl-grooves {
+  background: radial-gradient(circle, 
+    #111317 0%, 
+    #181c24 8%, 
+    #0f1217 12%, 
+    #1f242e 16%, 
+    #0c0f14 20%, 
+    #252b36 25%, 
+    #11151d 30%, 
+    #212836 38%, 
+    #090b10 46%, 
+    #262f40 55%, 
+    #111620 65%, 
+    #2d374d 75%, 
+    #090b10 88%, 
+    #1e2533 96%, 
+    #07080c 100%
+  );
+}
+
+/* Tactile button bevels */
+.dj-button-active {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7), 0 0 10px rgba(0, 229, 255, 0.5);
+}
+
+/* Custom range input faders */
+input[type="range"].vertical-fader {
+  -webkit-appearance: none;
+  appearance: none;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 32px;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"].horizontal-fader {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Range input track & thumb styling */
+input[type="range"]::-webkit-slider-runnable-track {
+  background: #0d1117;
+  border: 1px solid #1f2633;
+  border-radius: 4px;
+}
+
+input[type="range"].horizontal-fader::-webkit-slider-runnable-track {
+  height: 6px;
+}
+
+input[type="range"].horizontal-fader::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 28px;
+  width: 14px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #4b5563 0%, #1f2937 50%, #111827 100%);
+  border: 1px solid #6b7280;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.3);
+  margin-top: -11px;
+  cursor: grab;
+}
+
+input[type="range"].horizontal-fader::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  border-color: #00E5FF;
+}
+
+/* Monospace LED display text */
+.led-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-feature-settings: 'tnum' on, 'zero' on;
+}
+
+/* Glass panel subtle surface */
+.glass-panel {
+  background: rgba(17, 21, 29, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #252B36;
+}
+
+/* Rotary knob indicator */
+.knob-marker {
+  transform-origin: center center;
+}
