@@ -46,7 +46,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/nightshift-dj.git
+git clone https://github.com/argavthakur-maker/Dj-mixer-software.git
 
 # Enter the project directory
 cd nightshift-dj
