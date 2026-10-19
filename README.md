@@ -46,10 +46,10 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/argavthakur-maker/Dj-mixer-software.git
+git clone https://github.com/your-username/Dj-mixer-software.git
 
 # Enter the project directory
-cd nightshift-dj
+cd Dj-mixer-software
 
 # Install dependencies
 npm install
