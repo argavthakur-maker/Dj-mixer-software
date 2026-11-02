@@ -10,6 +10,11 @@ interface PitchFaderProps {
   onReset: () => void;
 }
 
+const THEME = {
+  cyan: { accent: '#00E5FF' },
+  violet: { accent: '#8B5CF6' },
+} as const;
+
 export const PitchFader: React.FC<PitchFaderProps> = ({
   deck,
   colorScheme,
@@ -18,10 +23,7 @@ export const PitchFader: React.FC<PitchFaderProps> = ({
   onReset,
 }) => {
   const isZero = Math.abs(deck.pitchPercent) < 0.05;
-
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onPitchChange(parseFloat(e.target.value));
-  };
+  const accent = THEME[colorScheme].accent;
 
   const cycleRange = () => {
     if (deck.pitchRange === 8) onRangeChange(16);
@@ -30,70 +32,72 @@ export const PitchFader: React.FC<PitchFaderProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center justify-between h-[230px] p-2 bg-[#0A0D14] rounded-md border border-[#1A212E] select-none">
-      {/* Top Header: Range Selector & Reset */}
-      <div className="flex items-center justify-between w-full gap-1">
+    <div className="flex flex-col items-center justify-between h-full py-2 px-1.5 bg-[#0A0E14] border border-[#252D3A] rounded-[3px] select-none w-[74px] self-stretch">
+      {/* Range selector + reset */}
+      <div className="flex items-center justify-between w-full gap-0.5">
         <button
           onClick={cycleRange}
-          title="Cycle pitch range: ±8%, ±16%, ±50%"
-          className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#141924] hover:bg-[#1E2536] text-slate-300 border border-[#252B36] transition-colors"
+          title="Cycle pitch range: ±8% / ±16% / ±50%"
+          className="px-1 py-0.5 rounded-[2px] text-[9px] font-mono font-bold bg-[#111722] hover:bg-[#161D29] text-[#A7B1C2] border border-[#252D3A] transition-colors"
         >
-          ±{deck.pitchRange}%
+          ±{deck.pitchRange}
         </button>
 
         <button
           onClick={onReset}
-          title="Reset pitch to 0.0%"
-          className="p-1 rounded text-slate-500 hover:text-cyan-400 hover:bg-[#141924] transition-colors"
+          title="Reset pitch to 0%"
+          aria-label="Reset pitch"
+          className="p-1 rounded-[2px] text-[#5A6678] hover:text-[#00E5FF] hover:bg-[#111722] transition-colors"
         >
           <RotateCcw size={11} />
         </button>
       </div>
 
-      {/* Center Track & Fader Area */}
-      <div className="relative flex items-center justify-center h-[160px] w-full">
-        {/* Scale tick marks */}
-        <div className="absolute left-1 flex flex-col justify-between h-[140px] text-[8px] font-mono text-slate-600 pointer-events-none">
+      {/* Fader assembly */}
+      <div className="relative flex items-center justify-center flex-1 w-full min-h-0">
+        {/* Scale ticks */}
+        <div className="absolute left-0 flex flex-col justify-between h-[88%] text-[7px] font-mono text-[#5A6678] pointer-events-none text-center leading-none">
           <span>+{deck.pitchRange}</span>
           <span>+{deck.pitchRange / 2}</span>
-          <span className={isZero ? 'text-emerald-400 font-bold' : 'text-slate-500'}>0</span>
+          <span className={isZero ? 'text-[#37F59A] font-bold' : ''}>0</span>
           <span>-{deck.pitchRange / 2}</span>
           <span>-{deck.pitchRange}</span>
         </div>
 
-        {/* Center Zero Detent LED */}
+        {/* Zero detent LED */}
         <div
-          className={`absolute right-1 w-2 h-2 rounded-full border transition-all ${
+          title="Center 0% detent"
+          className={`absolute right-0 w-1.5 h-1.5 rounded-full border transition-all ${
             isZero
-              ? 'bg-emerald-400 border-emerald-300 shadow-glow-emerald'
-              : 'bg-[#151D28] border-[#252B36]'
+              ? 'bg-[#37F59A] border-[#37F59A] shadow-glow-warn'
+              : 'bg-[#141B26] border-[#252D3A]'
           }`}
-          title="Center 0% Detent Indicator"
+          style={isZero ? { boxShadow: '0 0 8px rgba(55,245,154,0.6)' } : undefined}
         />
 
-        {/* Vertical Range Input */}
         <input
           type="range"
           min={-deck.pitchRange}
           max={deck.pitchRange}
           step={0.02}
           value={deck.pitchPercent}
-          onChange={handleSliderChange}
-          className="vertical-fader h-[140px] z-10"
+          onChange={(e) => onPitchChange(parseFloat(e.target.value))}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); onPitchChange(Math.max(-deck.pitchRange, deck.pitchPercent - 0.05)); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); onPitchChange(Math.min(deck.pitchRange, deck.pitchPercent + 0.05)); }
+          }}
+          aria-label={`Deck ${deck.id} pitch fader`}
+          className="vertical-fader h-[88%] z-10"
         />
       </div>
 
-      {/* Bottom Percentage Readout */}
-      <div className="w-full text-center">
-        <span className={`text-[10px] font-mono font-bold ${
-          isZero 
-            ? 'text-emerald-400' 
-            : colorScheme === 'cyan' 
-            ? 'text-cyan-400' 
-            : 'text-fuchsia-400'
-        }`}>
-          {deck.pitchPercent >= 0 ? `+${deck.pitchPercent.toFixed(2)}%` : `${deck.pitchPercent.toFixed(2)}%`}
-        </span>
+      {/* Percentage readout */}
+      <div
+        className="text-center font-mono font-bold text-[10px] tabular-nums"
+        style={{ color: isZero ? '#37F59A' : accent }}
+      >
+        {deck.pitchPercent >= 0 ? '+' : ''}
+        {deck.pitchPercent.toFixed(1)}%
       </div>
     </div>
   );

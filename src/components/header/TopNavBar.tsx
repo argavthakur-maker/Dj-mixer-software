@@ -1,26 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Disc, 
-  Cpu, 
+import {
+  Disc,
+  Settings,
   Volume2,
-  Settings, 
-  Radio, 
-  Circle, 
-  Sliders, 
-  Layers, 
-  Minus, 
-  X, 
-  Square,
-  HelpCircle
+  Sliders,
+  Layers,
+  PanelBottomClose,
+  PanelBottomOpen,
+  Keyboard,
+  ArrowRightLeft,
 } from 'lucide-react';
-import type { AppViewMode } from '../../types/dj';
+import type { AppViewMode, DeckState } from '../../types/dj';
+import { VuMeter } from '../common/VuMeter';
 
 interface TopNavBarProps {
   viewMode: AppViewMode;
   onViewModeChange: (mode: AppViewMode) => void;
   isRecording: boolean;
   onToggleRecording: () => void;
-  masterVolume: number;
+  deckA: DeckState;
+  deckB: DeckState;
+  masterMeterL: number;
+  masterMeterR: number;
+  libraryCollapsed: boolean;
+  onToggleLibrary: () => void;
   onOpenSettings: () => void;
   onOpenHelp: () => void;
 }
@@ -30,45 +33,32 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
   onViewModeChange,
   isRecording,
   onToggleRecording,
-  masterVolume,
+  deckA,
+  deckB,
+  masterMeterL,
+  masterMeterR,
+  libraryCollapsed,
+  onToggleLibrary,
   onOpenSettings,
   onOpenHelp,
 }) => {
   const [recordSeconds, setRecordSeconds] = useState(0);
-  const [cpuUsage, setCpuUsage] = useState(14);
-  const [clock, setClock] = useState('');
 
-  // Live session clock
+  // Live recording duration timer
   useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setClock(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Live Recording duration timer
-  useEffect(() => {
-    let interval: number;
-    if (isRecording) {
-      interval = window.setInterval(() => {
-        setRecordSeconds((s) => s + 1);
-      }, 1000);
-    } else {
+    if (!isRecording) {
       setRecordSeconds(0);
+      return;
     }
+    const interval = window.setInterval(() => setRecordSeconds((s) => s + 1), 1000);
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  // Subtle simulated DSP CPU load modulation
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCpuUsage(12 + Math.floor(Math.random() * 8));
-    }, 2500);
-    return () => clearInterval(timer);
-  }, []);
+  // Master clock: the deck flagged as MASTER; BPM in sync when running rates match
+  const masterDeck = deckA.isMaster ? deckA : deckB;
+  const bothPlaying = deckA.isPlaying && deckB.isPlaying;
+  const bpmInSync =
+    bothPlaying && Math.abs(deckA.currentBpm - deckB.currentBpm) < 0.05;
 
   const formatRecordTime = (sec: number) => {
     const mins = Math.floor(sec / 60);
@@ -76,166 +66,137 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  return (
-    <header className="h-12 bg-[#0A0D14] border-b border-[#1E2533] px-3 flex items-center justify-between select-none z-50">
-      {/* 1. Left Brand Identity: NIGHTSHIFT Logo + Custom Glowing Disc */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          {/* Custom DJ Disc Icon with Neon Aura */}
-          <div className="relative w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-500 to-violet-600 flex items-center justify-center shadow-glow-cyan">
-            <Disc size={15} className="text-black animate-spin-slow" />
-            <div className="absolute w-1.5 h-1.5 rounded-full bg-white" />
-          </div>
+  const navItems: Array<{ mode: AppViewMode; label: string; icon: React.ReactNode }> = [
+    { mode: 'performance', label: 'Performance', icon: <Sliders size={13} /> },
+    { mode: 'split', label: 'Split Deck', icon: <Layers size={13} /> },
+    { mode: 'library', label: 'Library', icon: <Disc size={13} /> },
+  ];
 
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono font-black text-sm tracking-widest text-white">
-                NIGHT<span className="text-cyan-400">SHIFT</span>
-              </span>
-              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#18202E] text-slate-400 border border-[#252E3E]">
-                PRO DJ
-              </span>
+  return (
+    <header className="h-11 shrink-0 bg-[#0D1118]/95 border-b border-[#252D3A] px-3 flex items-center justify-between select-none z-20">
+      {/* Left: brand + mode navigation */}
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Vinyl mark */}
+          <div className="w-7 h-7 rounded-full bg-[#111722] border border-[#252D3A] flex items-center justify-center">
+            <div className="w-[18px] h-[18px] rounded-full vinyl-grooves relative">
+              <div className="absolute inset-[3px] rounded-full bg-gradient-to-tr from-[#00E5FF] to-[#8B5CF6]" />
             </div>
           </div>
-        </div>
-
-        {/* View Mode Navigation Tabs */}
-        <div className="flex items-center bg-[#07090E] border border-[#1A212E] rounded p-0.5 ml-3">
-          <button
-            onClick={() => onViewModeChange('performance')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase transition-all ${
-              viewMode === 'performance'
-                ? 'bg-[#18202F] text-cyan-400 shadow-inner'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Sliders size={11} />
-            PERFORMANCE
-          </button>
-          <button
-            onClick={() => onViewModeChange('split')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase transition-all ${
-              viewMode === 'split'
-                ? 'bg-[#18202F] text-cyan-400 shadow-inner'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Layers size={11} />
-            SPLIT DECK
-          </button>
-          <button
-            onClick={() => onViewModeChange('library')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase transition-all ${
-              viewMode === 'library'
-                ? 'bg-[#18202F] text-cyan-400 shadow-inner'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Disc size={11} />
-            LIBRARY
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Center: Master Output, Latency Status, Session Clock & Live Recording */}
-      <div className="flex items-center gap-4">
-        {/* Audio Output Engine Specs Indicator */}
-        <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded bg-[#090C12] border border-[#1C2332] text-[10px] font-mono">
-          <Radio size={12} className="text-emerald-400 animate-pulse" />
-          <span className="text-slate-300 font-bold">48.0 kHz</span>
-          <span className="text-[#323B49]">|</span>
-          <span className="text-slate-400">2.1ms DSP</span>
-          <span className="text-[#323B49]">|</span>
-          <span className="text-cyan-400 font-bold">LOW LATENCY</span>
-        </div>
-
-        {/* Live Recording Console */}
-        <button
-          onClick={onToggleRecording}
-          className={`flex items-center gap-2 px-3 py-1 rounded border font-mono text-[10px] font-bold uppercase transition-all duration-150 active:scale-95 ${
-            isRecording
-              ? 'bg-rose-950 text-rose-300 border-rose-500 shadow-md'
-              : 'bg-[#11151F] text-slate-300 border-[#222A3A] hover:border-rose-500/50 hover:text-white'
-          }`}
-        >
-          <Circle
-            size={10}
-            className={`${isRecording ? 'text-rose-500 fill-rose-500 animate-ping' : 'text-rose-500 fill-rose-500'}`}
-          />
-          {isRecording ? (
-            <span className="flex items-center gap-1 text-rose-300">
-              REC {formatRecordTime(recordSeconds)}
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-sans font-bold text-[15px] tracking-[0.14em] text-[#F4F7FC] leading-none">
+              NIGHT<span className="text-[#00E5FF]">SHIFT</span>
             </span>
-          ) : (
-            <span>RECORD MIX</span>
-          )}
-        </button>
-
-        {/* Master Volume Indicator */}
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#090C12] border border-[#1C2332] text-[10px] font-mono">
-          <Volume2 size={12} className="text-cyan-400" />
-          <span className="text-slate-400 font-bold">MST:</span>
-          <span className="text-slate-200 font-bold">{Math.round(masterVolume * 100)}%</span>
+            <span className="text-[8px] font-mono font-bold tracking-[0.2em] text-[#8490A3] border border-[#252D3A] rounded px-1 py-px bg-[#111722]">
+              PRO
+            </span>
+          </div>
         </div>
 
-        {/* Real-time Session Clock */}
-        <div className="text-[11px] font-mono font-bold text-slate-300 bg-[#0E131C] px-2 py-1 rounded border border-[#1C2332]">
-          {clock}
+        {/* Mode selector */}
+        <nav className="flex items-center gap-0.5 bg-[#0A0E14] border border-[#252D3A] rounded p-0.5">
+          {navItems.map(({ mode, label, icon }) => (
+            <button
+              key={mode}
+              onClick={() => onViewModeChange(mode)}
+              aria-pressed={viewMode === mode}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[3px] text-[11px] font-medium tracking-wide transition-colors ${
+                viewMode === mode
+                  ? 'bg-[#161D29] text-[#00E5FF] shadow-inset'
+                  : 'text-[#A7B1C2] hover:text-[#F4F7FC]'
+              }`}
+            >
+              {icon}
+              <span className="hidden 2xl:inline">{label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Center: session status */}
+      <div className="hidden lg:flex items-center gap-2">
+        {/* Master BPM readout */}
+        <div className="flex items-baseline gap-2 px-3 py-1 bg-[#0A0E14] border border-[#252D3A] rounded">
+          <span className="text-[9px] font-mono font-semibold tracking-[0.18em] text-[#8490A3]">MASTER</span>
+          <span className="font-sans font-bold text-[15px] text-[#00E5FF] tabular-nums leading-none">
+            {masterDeck.track ? masterDeck.currentBpm.toFixed(1) : '---.-'}
+          </span>
+          <span className="text-[9px] font-mono text-[#8490A3] leading-none">BPM</span>
+        </div>
+
+        {/* Sync status */}
+        <div
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-[10px] font-mono font-bold tracking-[0.15em] transition-colors ${
+            bpmInSync
+              ? 'bg-[#0E221A] text-[#37F59A] border-[#37F59A]/40'
+              : 'bg-[#0A0E14] text-[#5A6678] border-[#252D3A]'
+          }`}
+          title={
+            bpmInSync
+              ? 'Both decks are beat-matched'
+              : 'Both decks must be playing for phase detection'
+          }
+        >
+          <ArrowRightLeft size={11} className={bpmInSync ? 'text-[#37F59A]' : 'text-[#5A6678]'} />
+          {bpmInSync ? 'BEATS LOCKED' : 'BPM FREE'}
+        </div>
+
+        {/* Master output meter */}
+        <div className="hidden xl:flex items-center gap-2 px-2 py-0.5 bg-[#0A0E14] border border-[#252D3A] rounded">
+          <Volume2 size={12} className="text-[#8490A3]" />
+          <VuMeter level={masterMeterL} height={18} width={5} segments={7} />
+          <VuMeter level={masterMeterR} height={18} width={5} segments={7} />
         </div>
       </div>
 
-      {/* 3. Right: CPU / Performance Indicator + Window Controls */}
-      <div className="flex items-center gap-3">
-        {/* CPU Load Indicator */}
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#090C12] border border-[#1C2332] text-[10px] font-mono">
-          <Cpu size={12} className={cpuUsage > 50 ? 'text-amber-400' : 'text-slate-400'} />
-          <span className="text-slate-400 font-bold">DSP:</span>
-          <span className={cpuUsage > 50 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
-            {cpuUsage}%
-          </span>
-        </div>
-
-        {/* Help & Shortcuts Guide */}
+      {/* Right: recording + system */}
+      <div className="flex items-center gap-2">
         <button
           onClick={onOpenHelp}
-          title="Keyboard shortcuts & Pro DJ Guide"
-          className="p-1.5 rounded text-slate-400 hover:text-cyan-400 hover:bg-[#141A26] transition-colors"
+          title="Keyboard shortcuts & DJ guide"
+          aria-label="Open help"
+          className="p-1.5 rounded text-[#A7B1C2] hover:text-[#F4F7FC] hover:bg-[#161D29] transition-colors"
         >
-          <HelpCircle size={15} />
+          <Keyboard size={15} />
         </button>
 
-        {/* Settings Button */}
+        <button
+          onClick={onToggleLibrary}
+          title={libraryCollapsed ? 'Expand music library (L)' : 'Collapse music library (L)'}
+          aria-label={libraryCollapsed ? 'Expand music library' : 'Collapse music library'}
+          className="p-1.5 rounded text-[#A7B1C2] hover:text-[#00E5FF] hover:bg-[#161D29] transition-colors"
+        >
+          {libraryCollapsed ? <PanelBottomOpen size={15} /> : <PanelBottomClose size={15} />}
+        </button>
+
+        {/* Recording control */}
+        <button
+          onClick={onToggleRecording}
+          title={isRecording ? 'Stop recording and download the mix' : 'Start recording the live mix'}
+          aria-pressed={isRecording}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded border text-[11px] font-mono font-bold tracking-[0.1em] transition-colors ${
+            isRecording
+              ? 'bg-[#2A0E15] text-[#FF3B57] border-[#FF3B57]/60 shadow-glow-rec'
+              : 'bg-[#111722] text-[#FF3B57] border-[#252D3A] hover:border-[#FF3B57]/50'
+          }`}
+        >
+          <span
+            className={`w-2 h-2 rounded-full bg-[#FF3B57] ${
+              isRecording ? 'animate-pulse-rec' : ''
+            }`}
+            aria-hidden
+          />
+          {isRecording ? `REC ${formatRecordTime(recordSeconds)}` : 'REC'}
+        </button>
+
         <button
           onClick={onOpenSettings}
-          title="Audio Hardware & Latency Settings"
-          className="p-1.5 rounded text-slate-400 hover:text-cyan-400 hover:bg-[#141A26] transition-colors"
+          title="Preferences"
+          aria-label="Open settings"
+          className="p-1.5 rounded text-[#A7B1C2] hover:text-[#F4F7FC] hover:bg-[#161D29] transition-colors"
         >
           <Settings size={15} />
         </button>
-
-        <div className="h-4 w-[1px] bg-[#222A3A]" />
-
-        {/* Window Controls (Styled like desktop pro app) */}
-        <div className="flex items-center gap-1">
-          <button
-            title="Minimize"
-            className="w-5 h-5 rounded flex items-center justify-center text-slate-500 hover:text-white hover:bg-[#1A2230] transition-colors"
-          >
-            <Minus size={11} />
-          </button>
-          <button
-            title="Maximize"
-            className="w-5 h-5 rounded flex items-center justify-center text-slate-500 hover:text-white hover:bg-[#1A2230] transition-colors"
-          >
-            <Square size={10} />
-          </button>
-          <button
-            title="Close"
-            className="w-5 h-5 rounded flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
-          >
-            <X size={12} />
-          </button>
-        </div>
       </div>
     </header>
   );

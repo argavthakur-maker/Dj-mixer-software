@@ -11,6 +11,11 @@ interface DeckControlsProps {
   onToggleMaster: () => void;
 }
 
+const THEME = {
+  cyan: { accent: '#00E5FF', glowClass: 'shadow-glow-cyan' },
+  violet: { accent: '#8B5CF6', glowClass: 'shadow-glow-violet' },
+} as const;
+
 export const DeckControls: React.FC<DeckControlsProps> = ({
   deck,
   colorScheme,
@@ -20,75 +25,76 @@ export const DeckControls: React.FC<DeckControlsProps> = ({
   onToggleMaster,
 }) => {
   const isPlaying = deck.isPlaying;
-  const primaryGlow = colorScheme === 'cyan' ? 'shadow-glow-cyan-lg' : 'shadow-glow-magenta-lg';
+  const theme = THEME[colorScheme];
 
   return (
-    <div className="flex items-center justify-between gap-3 p-2 bg-[#0E121A] rounded-b-md border-t border-[#1F2633]">
-      {/* Left: CUE Button & PLAY/PAUSE Button (Pioneer CDJ Hardware Style) */}
+    <div className="flex items-center justify-between gap-3 px-3 py-2.5 bg-[#0A0E14] border-t border-[#252D3A]">
+      {/* Left: CUE + PLAY/PAUSE */}
       <div className="flex items-center gap-3">
-        {/* Large Round Illuminated CUE Button */}
+        {/* Cue button */}
         <button
           onClick={onCue}
-          title="CUE: Press to return to cue point. Hold to preview."
-          className={`relative w-14 h-14 rounded-full flex flex-col items-center justify-center font-mono font-extrabold uppercase transition-all duration-100 active:scale-95 border-2 ${
-            deck.isPlaying
-              ? 'bg-[#181D26] text-amber-500/80 border-[#2B3545] shadow-inner'
-              : 'bg-[#221C11] text-amber-400 border-amber-500 shadow-glow-amber'
+          title="CUE: press while playing to return to the cue point; while stopped, set the cue to the current position"
+          aria-label="Cue"
+          className={`relative w-[46px] h-[46px] rounded-full flex items-center justify-center font-mono font-extrabold text-[10px] tracking-[0.1em] transition-all active:scale-95 ${
+            isPlaying
+              ? 'bg-[#111722] text-[#FFBF47]/70 border border-[#2A3444] shadow-inset'
+              : 'bg-[#181510] text-[#FFBF47] border border-[#FFBF47]/60 shadow-glow-warn'
           }`}
         >
-          <div className="absolute inset-1 rounded-full border border-white/10 pointer-events-none" />
-          <span className="text-xs tracking-wider">CUE</span>
+          <span className="absolute inset-1 rounded-full border border-white/5 pointer-events-none" />
+          CUE
         </button>
 
-        {/* Large Round Illuminated PLAY / PAUSE Button */}
+        {/* Play / Pause */}
         <button
           onClick={onPlayPause}
-          title="PLAY / PAUSE (Spacebar)"
-          className={`relative w-14 h-14 rounded-full flex flex-col items-center justify-center font-mono font-extrabold uppercase transition-all duration-100 active:scale-95 border-2 ${
+          title={`Play / pause deck ${deck.id}`}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          aria-pressed={isPlaying}
+          className={`relative w-[46px] h-[46px] rounded-full flex items-center justify-center transition-all active:scale-95 border ${
             isPlaying
-              ? colorScheme === 'cyan'
-                ? `bg-cyan-500 text-black border-cyan-300 ${primaryGlow}`
-                : `bg-fuchsia-500 text-black border-fuchsia-300 ${primaryGlow}`
-              : 'bg-[#131E1E] text-emerald-400 border-emerald-500/80 shadow-glow-emerald hover:border-emerald-400'
+              ? `bg-[#0D1118] border-2 ${theme.glowClass}`
+              : 'bg-[#0E1512] border border-[#37F59A]/60 shadow-glow-warn'
           }`}
+          style={isPlaying ? { borderColor: theme.accent, color: theme.accent } : { color: '#37F59A' }}
         >
-          <div className="absolute inset-1 rounded-full border border-white/20 pointer-events-none" />
-          {isPlaying ? (
-            <Pause size={18} className="fill-current" />
-          ) : (
-            <Play size={18} className="fill-current ml-0.5" />
-          )}
+          <span className="absolute inset-[3px] rounded-full border border-white/8 pointer-events-none" />
+          {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
         </button>
       </div>
 
-      {/* Right: SYNC & MASTER Buttons */}
+      {/* Right: MASTER + SYNC */}
       <div className="flex items-center gap-2">
-        {/* Master Deck Selector */}
         <button
           onClick={onToggleMaster}
-          title="Set this deck as Master BPM Clock"
-          className={`px-3 py-2 rounded text-[10px] font-mono font-bold tracking-wider uppercase border transition-all ${
+          title="Use this deck as the master BPM clock"
+          aria-pressed={deck.isMaster}
+          className={`px-3 py-2 rounded-[3px] text-[10px] font-mono font-bold tracking-[0.15em] transition-all border ${
             deck.isMaster
-              ? 'bg-amber-500 text-black border-amber-400 shadow-glow-amber font-extrabold'
-              : 'bg-[#121620] text-slate-400 border-[#202735] hover:text-white'
+              ? 'text-[#FFBF47] border-[#FFBF47]/60 bg-[#FFBF47]/5 shadow-glow-warn'
+              : 'text-[#8490A3] border-[#252D3A] bg-[#111722] hover:text-[#F4F7FC]'
           }`}
         >
           MASTER
         </button>
 
-        {/* SYNC Button */}
         <button
           onClick={onSync}
-          title="SYNC: Beat match and tempo sync with opposite deck"
-          className={`px-3.5 py-2 rounded text-[11px] font-mono font-extrabold tracking-wider uppercase flex items-center gap-1.5 border transition-all ${
+          title="Beat match tempo with the opposite deck"
+          aria-pressed={deck.isSync}
+          className={`px-3 py-2 rounded-[3px] text-[10px] font-mono font-extrabold tracking-[0.15em] flex items-center gap-1.5 transition-all border ${
             deck.isSync
-              ? colorScheme === 'cyan'
-                ? 'bg-cyan-400 text-black border-cyan-300 shadow-glow-cyan'
-                : 'bg-fuchsia-400 text-black border-fuchsia-300 shadow-glow-magenta'
-              : 'bg-[#141A26] text-slate-300 border-[#252E3E] hover:border-slate-400 hover:text-white'
+              ? `bg-[#0D1118] ${theme.glowClass}`
+              : 'text-[#A7B1C2] border-[#252D3A] bg-[#111722] hover:text-[#F4F7FC]'
           }`}
+          style={
+            deck.isSync
+              ? { borderColor: theme.accent, color: '#07090D', backgroundColor: theme.accent }
+              : undefined
+          }
         >
-          <ArrowRightLeft size={12} />
+          <ArrowRightLeft size={13} />
           SYNC
         </button>
       </div>

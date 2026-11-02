@@ -1,23 +1,65 @@
-import { useState, useEffect } from 'react';
-import type { 
-  Track, 
-  DeckState, 
-  ChannelMixerState, 
-  MixerState, 
-  HotCue, 
-  LoopState, 
-  AppViewMode 
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type {
+  Track,
+  DeckState,
+  ChannelMixerState,
+  MixerState,
+  HotCue,
+  LoopState,
+  AppViewMode,
 } from './types/dj';
 import { audioEngine } from './audio/AudioEngine';
 import { createDemoTracks, decodeAudioFile } from './audio/trackGenerator';
 import { TopNavBar } from './components/header/TopNavBar';
-import { StackedWaveformsContainer } from './components/waveform/StackedWaveformsContainer';
 import { DjDeck } from './components/deck/DjDeck';
 import { CentralMixer } from './components/mixer/CentralMixer';
+import { StackedWaveformsContainer } from './components/waveform/StackedWaveformsContainer';
 import { TrackLibrary } from './components/library/TrackLibrary';
 import { SettingsModal } from './components/common/SettingsModal';
 import { HelpModal } from './components/common/HelpModal';
-import { Disc } from 'lucide-react';
+
+function createInitialDeck(id: 'A' | 'B', bpm: number): DeckState {
+  return {
+    id,
+    track: null,
+    isPlaying: false,
+    currentTime: 0,
+    cuePosition: 0,
+    bpm,
+    currentBpm: bpm,
+    pitchPercent: 0,
+    pitchRange: 8,
+    isKeyLocked: true,
+    isSync: false,
+    isMaster: id === 'A',
+    isSlipMode: false,
+    isQuantize: true,
+    loop: { active: false, start: 0, end: 0, lengthInBeats: 4 },
+    hotCues: [],
+    activePadMode: 'hotcue',
+    isScratching: false,
+    vinylMode: true,
+    scratchAngle: 0,
+    volumeLevel: 0,
+  };
+}
+
+function createInitialChannel(): ChannelMixerState {
+  return {
+    gain: 1.0,
+    eqHigh: 0,
+    eqMid: 0,
+    eqLow: 0,
+    killHigh: false,
+    killMid: false,
+    killLow: false,
+    filter: 0,
+    faderVolume: 0.85,
+    cueHeadphone: false,
+    meterLeft: 0,
+    meterRight: 0,
+  };
+}
 
 export function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -26,89 +68,14 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [libraryCollapsed, setLibraryCollapsed] = useState(false);
 
-  // Deck A Initial State (Cyan theme)
-  const [deckA, setDeckA] = useState<DeckState>({
-    id: 'A',
-    track: null,
-    isPlaying: false,
-    currentTime: 0,
-    cuePosition: 0,
-    bpm: 128,
-    currentBpm: 128,
-    pitchPercent: 0,
-    pitchRange: 8,
-    isKeyLocked: true,
-    isSync: false,
-    isMaster: true,
-    isSlipMode: false,
-    isQuantize: true,
-    loop: { active: false, start: 0, end: 0, lengthInBeats: 4 },
-    hotCues: [],
-    activePadMode: 'hotcue',
-    isScratching: false,
-    vinylMode: true,
-    scratchAngle: 0,
-    volumeLevel: 0,
-  });
+  const [deckA, setDeckA] = useState<DeckState>(() => createInitialDeck('A', 128));
+  const [deckB, setDeckB] = useState<DeckState>(() => createInitialDeck('B', 124));
 
-  // Deck B Initial State (Violet/Magenta theme)
-  const [deckB, setDeckB] = useState<DeckState>({
-    id: 'B',
-    track: null,
-    isPlaying: false,
-    currentTime: 0,
-    cuePosition: 0,
-    bpm: 124,
-    currentBpm: 124,
-    pitchPercent: 0,
-    pitchRange: 8,
-    isKeyLocked: true,
-    isSync: false,
-    isMaster: false,
-    isSlipMode: false,
-    isQuantize: true,
-    loop: { active: false, start: 0, end: 0, lengthInBeats: 4 },
-    hotCues: [],
-    activePadMode: 'hotcue',
-    isScratching: false,
-    vinylMode: true,
-    scratchAngle: 0,
-    volumeLevel: 0,
-  });
+  const [channelA, setChannelA] = useState<ChannelMixerState>(createInitialChannel);
+  const [channelB, setChannelB] = useState<ChannelMixerState>(createInitialChannel);
 
-  // Mixer Channel States
-  const [channelA, setChannelA] = useState<ChannelMixerState>({
-    gain: 1.0,
-    eqHigh: 0,
-    eqMid: 0,
-    eqLow: 0,
-    killHigh: false,
-    killMid: false,
-    killLow: false,
-    filter: 0,
-    faderVolume: 0.85,
-    cueHeadphone: false,
-    meterLeft: 0,
-    meterRight: 0,
-  });
-
-  const [channelB, setChannelB] = useState<ChannelMixerState>({
-    gain: 1.0,
-    eqHigh: 0,
-    eqMid: 0,
-    eqLow: 0,
-    killHigh: false,
-    killMid: false,
-    killLow: false,
-    filter: 0,
-    faderVolume: 0.85,
-    cueHeadphone: false,
-    meterLeft: 0,
-    meterRight: 0,
-  });
-
-  // Central Mixer Master & Crossfader State
   const [mixer, setMixer] = useState<MixerState>({
     masterVolume: 0.85,
     boothVolume: 0.7,
@@ -123,6 +90,10 @@ export function App() {
     masterMeterR: 0,
   });
 
+  // Mutable refs for the animation loop (avoids re-subscribing rAF every render)
+  const deckStateRef = useRef({ deckA, deckB });
+  deckStateRef.current = { deckA, deckB };
+
   // Initial Load of Demo Tracks
   useEffect(() => {
     let mounted = true;
@@ -131,7 +102,6 @@ export function App() {
         const demoTracks = await createDemoTracks();
         if (mounted && demoTracks.length > 0) {
           setTracks(demoTracks);
-          // Auto load Track 1 to Deck A and Track 2 to Deck B
           const tA = demoTracks[0];
           const tB = demoTracks[1];
 
@@ -163,197 +133,164 @@ export function App() {
     return () => { mounted = false; };
   }, []);
 
-  // Sync Audio Engine controls whenever channel or mixer state changes
-  useEffect(() => {
-    audioEngine.setTrim('A', channelA.gain);
-    audioEngine.setEq('A', 'high', channelA.eqHigh, channelA.killHigh);
-    audioEngine.setEq('A', 'mid', channelA.eqMid, channelA.killMid);
-    audioEngine.setEq('A', 'low', channelA.eqLow, channelA.killLow);
-    audioEngine.setFilter('A', channelA.filter);
-    audioEngine.setGain('A', channelA.faderVolume);
-  }, [channelA]);
+  const applyChannel = useCallback((deckId: 'A' | 'B', ch: ChannelMixerState) => {
+    audioEngine.setTrim(deckId, ch.gain);
+    audioEngine.setEq(deckId, 'high', ch.eqHigh, ch.killHigh);
+    audioEngine.setEq(deckId, 'mid', ch.eqMid, ch.killMid);
+    audioEngine.setEq(deckId, 'low', ch.eqLow, ch.killLow);
+    audioEngine.setFilter(deckId, ch.filter);
+    audioEngine.setGain(deckId, ch.faderVolume);
+  }, []);
 
-  useEffect(() => {
-    audioEngine.setTrim('B', channelB.gain);
-    audioEngine.setEq('B', 'high', channelB.eqHigh, channelB.killHigh);
-    audioEngine.setEq('B', 'mid', channelB.eqMid, channelB.killMid);
-    audioEngine.setEq('B', 'low', channelB.eqLow, channelB.killLow);
-    audioEngine.setFilter('B', channelB.filter);
-    audioEngine.setGain('B', channelB.faderVolume);
-  }, [channelB]);
+  useEffect(() => { applyChannel('A', channelA); }, [channelA, applyChannel]);
+  useEffect(() => { applyChannel('B', channelB); }, [channelB, applyChannel]);
 
   useEffect(() => {
     audioEngine.setMasterVolume(mixer.masterVolume);
     audioEngine.setCrossfader(
-      mixer.crossfader, 
-      mixer.crossfaderCurve, 
-      mixer.crossfaderReverse, 
-      mixer.deckAAssign, 
+      mixer.crossfader,
+      mixer.crossfaderCurve,
+      mixer.crossfaderReverse,
+      mixer.deckAAssign,
       mixer.deckBAssign
     );
   }, [mixer.masterVolume, mixer.crossfader, mixer.crossfaderCurve, mixer.crossfaderReverse, mixer.deckAAssign, mixer.deckBAssign]);
 
-  // High-performance real-time Animation Loop for Playhead Position & VU Meters
+  // High-performance animation loop for playhead positions & VU meters
   useEffect(() => {
     let animId: number;
 
     const tick = () => {
-      // 1. Update playhead positions from audio engine
-      if (deckA.isPlaying) {
+      const { deckA: dA, deckB: dB } = deckStateRef.current;
+
+      if (dA.isPlaying) {
         const timeA = audioEngine.getCurrentTime('A');
-        // Handle auto-loop boundary
-        if (deckA.loop.active && timeA >= deckA.loop.end) {
-          audioEngine.seek('A', deckA.loop.start, deckA.loop);
-          setDeckA((prev) => ({ ...prev, currentTime: deckA.loop.start }));
-        } else {
-          setDeckA((prev) => ({ ...prev, currentTime: timeA }));
-        }
+        const handled = dA.loop.active && timeA >= dA.loop.end && dA.loop.end > dA.loop.start;
+        const safeTime = handled ? dA.loop.start : timeA;
+        if (handled) audioEngine.seek('A', dA.loop.start, dA.loop);
+        setDeckA((prev) => (prev.currentTime !== safeTime ? { ...prev, currentTime: safeTime } : prev));
       }
 
-      if (deckB.isPlaying) {
+      if (dB.isPlaying) {
         const timeB = audioEngine.getCurrentTime('B');
-        if (deckB.loop.active && timeB >= deckB.loop.end) {
-          audioEngine.seek('B', deckB.loop.start, deckB.loop);
-          setDeckB((prev) => ({ ...prev, currentTime: deckB.loop.start }));
-        } else {
-          setDeckB((prev) => ({ ...prev, currentTime: timeB }));
-        }
+        const handled = dB.loop.active && timeB >= dB.loop.end && dB.loop.end > dB.loop.start;
+        const safeTime = handled ? dB.loop.start : timeB;
+        if (handled) audioEngine.seek('B', dB.loop.start, dB.loop);
+        setDeckB((prev) => (prev.currentTime !== safeTime ? { ...prev, currentTime: safeTime } : prev));
       }
 
-      // 2. Sample VU meters from Audio Engine
+      // Sample VU meters from Audio Engine
       const meters = audioEngine.getMeterLevels();
-      setChannelA((prev) => ({ ...prev, meterLeft: meters.levelA, meterRight: meters.levelA }));
-      setChannelB((prev) => ({ ...prev, meterLeft: meters.levelB, meterRight: meters.levelB }));
-      setMixer((prev) => ({
-        ...prev,
-        masterMeterL: meters.masterL,
-        masterMeterR: meters.masterR,
-      }));
+      if (channelA.meterLeft !== meters.levelA) {
+        setChannelA((prev) => ({ ...prev, meterLeft: meters.levelA, meterRight: meters.levelA }));
+      }
+      if (channelB.meterLeft !== meters.levelB) {
+        setChannelB((prev) => ({ ...prev, meterLeft: meters.levelB, meterRight: meters.levelB }));
+      }
+      setMixer((prev) => {
+        if (prev.masterMeterL === meters.masterL && prev.masterMeterR === meters.masterR) return prev;
+        return { ...prev, masterMeterL: meters.masterL, masterMeterR: meters.masterR };
+      });
 
       animId = requestAnimationFrame(tick);
     };
 
     animId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animId);
-  }, [deckA.isPlaying, deckA.loop, deckB.isPlaying, deckB.loop]);
+  }, [channelA.meterLeft, channelB.meterLeft]);
+
+  // Track Loading from Library
+  const loadTrackToDeck = useCallback((deckId: 'A' | 'B', track: Track) => {
+    audioEngine.loadTrack(deckId, track);
+    const setter = deckId === 'A' ? setDeckA : setDeckB;
+    setter((prev) => ({
+      ...prev,
+      track,
+      bpm: track.bpm,
+      currentBpm: track.bpm * (1 + prev.pitchPercent / 100),
+      currentTime: 0,
+      cuePosition: 0,
+      isSync: false,
+      hotCues: track.hotCues ? [...track.hotCues] : [],
+      loop: { active: false, start: 0, end: 0, lengthInBeats: 4 },
+    }));
+  }, []);
 
   // Deck Controls Handlers
-  const handlePlayPause = (deckId: 'A' | 'B') => {
+  const handlePlayPause = useCallback((deckId: 'A' | 'B') => {
     audioEngine.ensureContext();
-    if (deckId === 'A') {
-      if (deckA.isPlaying) {
-        audioEngine.pause('A');
-        setDeckA((prev) => ({ ...prev, isPlaying: false }));
-      } else {
-        audioEngine.play('A', deckA.currentTime, deckA.loop);
-        setDeckA((prev) => ({ ...prev, isPlaying: true }));
-      }
+    const deck = deckId === 'A' ? deckA : deckB;
+    if (deck.isPlaying) {
+      audioEngine.pause(deckId);
+      (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({ ...prev, isPlaying: false }));
     } else {
-      if (deckB.isPlaying) {
-        audioEngine.pause('B');
-        setDeckB((prev) => ({ ...prev, isPlaying: false }));
-      } else {
-        audioEngine.play('B', deckB.currentTime, deckB.loop);
-        setDeckB((prev) => ({ ...prev, isPlaying: true }));
-      }
+      audioEngine.play(deckId, deck.currentTime, deck.loop);
+      (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({ ...prev, isPlaying: true }));
     }
-  };
+  }, [deckA, deckB]);
 
-  const handleCue = (deckId: 'A' | 'B') => {
+  const handleCue = useCallback((deckId: 'A' | 'B') => {
     audioEngine.ensureContext();
-    if (deckId === 'A') {
-      if (deckA.isPlaying) {
-        audioEngine.pause('A');
-        audioEngine.seek('A', deckA.cuePosition, deckA.loop);
-        setDeckA((prev) => ({ ...prev, isPlaying: false, currentTime: prev.cuePosition }));
-      } else {
-        // Set new cue point to current time if paused
-        setDeckA((prev) => ({ ...prev, cuePosition: prev.currentTime }));
-      }
+    const deck = deckId === 'A' ? deckA : deckB;
+    if (deck.isPlaying) {
+      audioEngine.pause(deckId);
+      audioEngine.seek(deckId, deck.cuePosition, deck.loop);
+      (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({ ...prev, isPlaying: false, currentTime: prev.cuePosition }));
     } else {
-      if (deckB.isPlaying) {
-        audioEngine.pause('B');
-        audioEngine.seek('B', deckB.cuePosition, deckB.loop);
-        setDeckB((prev) => ({ ...prev, isPlaying: false, currentTime: prev.cuePosition }));
-      } else {
-        setDeckB((prev) => ({ ...prev, cuePosition: prev.currentTime }));
-      }
+      (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({ ...prev, cuePosition: prev.currentTime }));
     }
-  };
+  }, [deckA, deckB]);
 
-  const handleSeek = (deckId: 'A' | 'B', time: number) => {
+  const handleSeek = useCallback((deckId: 'A' | 'B', time: number) => {
     audioEngine.ensureContext();
     const loop = deckId === 'A' ? deckA.loop : deckB.loop;
     audioEngine.seek(deckId, time, loop);
-    if (deckId === 'A') {
-      setDeckA((prev) => ({ ...prev, currentTime: time }));
-    } else {
-      setDeckB((prev) => ({ ...prev, currentTime: time }));
-    }
-  };
+    (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({ ...prev, currentTime: time }));
+  }, [deckA.loop, deckB.loop]);
 
-  const handleScratch = (deckId: 'A' | 'B', delta: number) => {
+  const handleScratch = useCallback((deckId: 'A' | 'B', delta: number) => {
     audioEngine.triggerScratch(deckId, delta);
-  };
+  }, []);
 
-  const handleNudge = (deckId: 'A' | 'B', amount: number) => {
+  const handleNudge = useCallback((deckId: 'A' | 'B', amount: number) => {
     audioEngine.ensureContext();
     const deck = deckId === 'A' ? deckA : deckB;
     const currentRate = 1.0 + (deck.pitchPercent / 100);
-    const nudgedRate = currentRate + amount;
-    audioEngine.setPlaybackRate(deckId, nudgedRate);
-
-    // Return to pitch fader rate after 120ms
+    audioEngine.setPlaybackRate(deckId, currentRate + amount);
     setTimeout(() => {
       audioEngine.setPlaybackRate(deckId, currentRate);
     }, 120);
-  };
+  }, [deckA.pitchPercent, deckB.pitchPercent]);
 
-  const handlePitchChange = (deckId: 'A' | 'B', percent: number) => {
+  const handlePitchChange = useCallback((deckId: 'A' | 'B', percent: number) => {
+    audioEngine.ensureContext();
     const rate = 1.0 + (percent / 100);
     audioEngine.setPlaybackRate(deckId, rate);
+    (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({
+      ...prev,
+      pitchPercent: percent,
+      currentBpm: prev.bpm * rate,
+    }));
+  }, []);
 
-    if (deckId === 'A') {
-      const newBpm = deckA.bpm * rate;
-      setDeckA((prev) => ({
-        ...prev,
-        pitchPercent: percent,
-        currentBpm: newBpm,
-      }));
-    } else {
-      const newBpm = deckB.bpm * rate;
-      setDeckB((prev) => ({
-        ...prev,
-        pitchPercent: percent,
-        currentBpm: newBpm,
-      }));
-    }
-  };
-
-  const handleSync = (deckId: 'A' | 'B') => {
+  const handleSync = useCallback((deckId: 'A' | 'B') => {
     const sourceDeck = deckId === 'A' ? deckB : deckA;
     if (!sourceDeck.track) return;
-
-    const targetBpm = sourceDeck.currentBpm;
     const targetDeck = deckId === 'A' ? deckA : deckB;
-    const neededPitch = ((targetBpm / targetDeck.bpm) - 1) * 100;
-
+    const neededPitch = ((sourceDeck.currentBpm / targetDeck.bpm) - 1) * 100;
     handlePitchChange(deckId, neededPitch);
-
-    if (deckId === 'A') {
-      setDeckA((prev) => ({ ...prev, isSync: true }));
-    } else {
-      setDeckB((prev) => ({ ...prev, isSync: true }));
-    }
-  };
+    (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({ ...prev, isSync: true }));
+  }, [deckA, deckB, handlePitchChange]);
 
   // Auto Loop Handlers
-  const handleSetAutoLoop = (deckId: 'A' | 'B', beats: number) => {
+  const handleSetAutoLoop = useCallback((deckId: 'A' | 'B', beats: number) => {
     const deck = deckId === 'A' ? deckA : deckB;
+    if (!deck.track) return;
     const beatSec = 60 / deck.currentBpm;
     const loopLenSec = beats * beatSec;
     const start = deck.currentTime;
-    const end = start + loopLenSec;
+    // Clamp loop inside the track
+    const end = Math.min(start + loopLenSec, deck.track.duration);
 
     const newLoop: LoopState = {
       active: true,
@@ -362,84 +299,72 @@ export function App() {
       lengthInBeats: beats,
     };
 
-    if (deckId === 'A') {
-      setDeckA((prev) => ({ ...prev, loop: newLoop }));
-      if (deck.isPlaying) audioEngine.play('A', start, newLoop);
-    } else {
-      setDeckB((prev) => ({ ...prev, loop: newLoop }));
-      if (deck.isPlaying) audioEngine.play('B', start, newLoop);
-    }
-  };
+    (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({ ...prev, loop: newLoop }));
+    if (deck.isPlaying) audioEngine.play(deckId, start, newLoop);
+  }, [deckA, deckB]);
 
-  const handleToggleLoop = (deckId: 'A' | 'B') => {
+  const handleToggleLoop = useCallback((deckId: 'A' | 'B') => {
     const deck = deckId === 'A' ? deckA : deckB;
     const newActive = !deck.loop.active;
-
-    if (deckId === 'A') {
-      setDeckA((prev) => ({ ...prev, loop: { ...prev.loop, active: newActive } }));
-      if (deck.isPlaying) audioEngine.play('A', deck.currentTime, { ...deck.loop, active: newActive });
-    } else {
-      setDeckB((prev) => ({ ...prev, loop: { ...prev.loop, active: newActive } }));
-      if (deck.isPlaying) audioEngine.play('B', deck.currentTime, { ...deck.loop, active: newActive });
+    (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({
+      ...prev,
+      loop: { ...prev.loop, active: newActive },
+    }));
+    if (deck.isPlaying) {
+      audioEngine.play(deckId, deck.currentTime, { ...deck.loop, active: newActive });
     }
-  };
+  }, [deckA, deckB]);
 
-  const handleHalveLoop = (deckId: 'A' | 'B') => {
+  const handleHalveLoop = useCallback((deckId: 'A' | 'B') => {
     const deck = deckId === 'A' ? deckA : deckB;
     if (!deck.loop.active) return;
-    const newLen = Math.max(0.25, deck.loop.lengthInBeats / 2);
-    handleSetAutoLoop(deckId, newLen);
-  };
+    handleSetAutoLoop(deckId, Math.max(0.25, deck.loop.lengthInBeats / 2));
+  }, [deckA, deckB, handleSetAutoLoop]);
 
-  const handleDoubleLoop = (deckId: 'A' | 'B') => {
+  const handleDoubleLoop = useCallback((deckId: 'A' | 'B') => {
     const deck = deckId === 'A' ? deckA : deckB;
     if (!deck.loop.active) return;
-    const newLen = Math.min(64, deck.loop.lengthInBeats * 2);
-    handleSetAutoLoop(deckId, newLen);
-  };
+    handleSetAutoLoop(deckId, Math.min(64, deck.loop.lengthInBeats * 2));
+  }, [deckA, deckB, handleSetAutoLoop]);
 
   // Hot Cues Handlers
-  const handleJumpToCue = (deckId: 'A' | 'B', cue: HotCue) => {
+  const handleJumpToCue = useCallback((deckId: 'A' | 'B', cue: HotCue) => {
     handleSeek(deckId, cue.position);
-  };
+  }, [handleSeek]);
 
-  const handleSetCue = (deckId: 'A' | 'B', id: number) => {
+  const handleSetCue = useCallback((deckId: 'A' | 'B', id: number) => {
     const deck = deckId === 'A' ? deckA : deckB;
-    const colors = ['#00E5FF', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#06B6D4'];
+    const colors = ['#00E5FF', '#8B5CF6', '#D946EF', '#FFBF47', '#37F59A', '#38F6FF', '#FF3B57', '#A7B1C2'];
     const newCue: HotCue = {
       id,
       position: Number(deck.currentTime.toFixed(2)),
       label: `Cue ${id}`,
       color: colors[(id - 1) % colors.length],
     };
+    (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({
+      ...prev,
+      hotCues: [...prev.hotCues.filter((c) => c.id !== id), newCue],
+    }));
+  }, [deckA.currentTime, deckB.currentTime]);
 
-    if (deckId === 'A') {
-      setDeckA((prev) => ({ ...prev, hotCues: [...prev.hotCues.filter(c => c.id !== id), newCue] }));
-    } else {
-      setDeckB((prev) => ({ ...prev, hotCues: [...prev.hotCues.filter(c => c.id !== id), newCue] }));
-    }
-  };
+  const handleDeleteCue = useCallback((deckId: 'A' | 'B', id: number) => {
+    (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({
+      ...prev,
+      hotCues: prev.hotCues.filter((c) => c.id !== id),
+    }));
+  }, []);
 
-  const handleDeleteCue = (deckId: 'A' | 'B', id: number) => {
-    if (deckId === 'A') {
-      setDeckA((prev) => ({ ...prev, hotCues: prev.hotCues.filter(c => c.id !== id) }));
-    } else {
-      setDeckB((prev) => ({ ...prev, hotCues: prev.hotCues.filter(c => c.id !== id) }));
-    }
-  };
-
-  const handleBeatJump = (deckId: 'A' | 'B', beats: number) => {
+  const handleBeatJump = useCallback((deckId: 'A' | 'B', beats: number) => {
     const deck = deckId === 'A' ? deckA : deckB;
     const beatSec = 60 / deck.currentBpm;
-    const target = deck.currentTime + (beats * beatSec);
-    handleSeek(deckId, target);
-  };
+    handleSeek(deckId, deck.currentTime + beats * beatSec);
+  }, [deckA, deckB, handleSeek]);
 
-  const handleTriggerSample = (sampleId: number) => {
+  const handleTriggerSample = useCallback((sampleId: number) => {
     audioEngine.playSample(sampleId);
-  };
+  }, []);
 
-  const handlePadFx = (deckId: 'A' | 'B', fxType: string) => {
+  const handlePadFx = useCallback((deckId: 'A' | 'B', fxType: string) => {
     audioEngine.ensureContext();
     if (fxType === 'brake') {
       handleNudge(deckId, -0.6);
@@ -447,246 +372,231 @@ export function App() {
       const beats = fxType === 'roll-1-16' ? 0.0625 : fxType === 'roll-1-8' ? 0.125 : fxType === 'roll-1-4' ? 0.25 : 0.5;
       handleSetAutoLoop(deckId, beats);
     }
-  };
-
-  // Track Loading from Library
-  const handleLoadTrackA = (track: Track) => {
-    audioEngine.loadTrack('A', track);
-    setDeckA((prev) => ({
-      ...prev,
-      track,
-      bpm: track.bpm,
-      currentBpm: track.bpm * (1 + prev.pitchPercent / 100),
-      currentTime: 0,
-      cuePosition: 0,
-      hotCues: track.hotCues || [],
-    }));
-  };
-
-  const handleLoadTrackB = (track: Track) => {
-    audioEngine.loadTrack('B', track);
-    setDeckB((prev) => ({
-      ...prev,
-      track,
-      bpm: track.bpm,
-      currentBpm: track.bpm * (1 + prev.pitchPercent / 100),
-      currentTime: 0,
-      cuePosition: 0,
-      hotCues: track.hotCues || [],
-    }));
-  };
+  }, [handleNudge, handleSetAutoLoop]);
 
   // Local File Import
-  const handleImportFile = async (file: File) => {
+  const handleImportFile = useCallback(async (file: File) => {
     try {
       const newTrack = await decodeAudioFile(file);
       setTracks((prev) => [newTrack, ...prev]);
     } catch (err) {
       console.error('Error importing audio file:', err);
-      alert('Could not decode audio file. Please ensure it is a valid MP3, WAV, or AAC file.');
+      alert('Could not decode audio file. Please ensure it is a valid MP3, WAV, or AAC file that your browser can play.');
     }
-  };
+  }, []);
 
   // Live Mix Recording Toggle & Download
-  const handleToggleRecording = () => {
+  const handleToggleRecording = useCallback(() => {
     if (isRecording) {
       const result = audioEngine.stopRecording();
       setIsRecording(false);
       if (result) {
-        // Trigger mix audio download
         const a = document.createElement('a');
         a.href = result.url;
-        a.download = `NIGHTSHIFT-Club-Mix-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.webm`;
+        a.download = `NIGHTSHIFT-Mix-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.webm`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
       }
     } else {
       const started = audioEngine.startRecording();
-      if (started) {
-        setIsRecording(true);
-      }
+      if (started) setIsRecording(true);
     }
-  };
+  }, [isRecording]);
 
-  // Global Keyboard Shortcuts (Spacebar, C, Enter, K, S, B, Z, M)
+  // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in a search input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      if (e.repeat) return;
 
-      if (e.code === 'Space') {
-        e.preventDefault();
-        handlePlayPause('A');
-      } else if (e.code === 'Enter') {
-        e.preventDefault();
-        handlePlayPause('B');
-      } else if (e.code === 'KeyC') {
-        handleCue('A');
-      } else if (e.code === 'KeyK') {
-        handleCue('B');
-      } else if (e.code === 'KeyS') {
-        handleSync('A');
-      } else if (e.code === 'KeyB') {
-        handleSync('B');
-      } else if (e.code === 'KeyZ') {
-        // Toggle Deck A Bass Kill
-        setChannelA((prev) => ({ ...prev, killLow: !prev.killLow }));
-      } else if (e.code === 'KeyM') {
-        // Toggle Deck B Bass Kill
-        setChannelB((prev) => ({ ...prev, killLow: !prev.killLow }));
-      } else if (e.code === 'BracketLeft') {
-        handleNudge('A', -0.03);
-      } else if (e.code === 'BracketRight') {
-        handleNudge('A', 0.03);
-      } else if (e.code === 'Minus') {
-        handleNudge('B', -0.03);
-      } else if (e.code === 'Equal') {
-        handleNudge('B', 0.03);
-      } else if (e.code === 'ArrowLeft') {
-        setMixer((prev) => ({ ...prev, crossfader: Math.max(-1.0, prev.crossfader - 0.1) }));
-      } else if (e.code === 'ArrowRight') {
-        setMixer((prev) => ({ ...prev, crossfader: Math.min(1.0, prev.crossfader + 0.1) }));
+      switch (e.code) {
+        case 'Space': e.preventDefault(); handlePlayPause('A'); break;
+        case 'Enter': e.preventDefault(); handlePlayPause('B'); break;
+        case 'KeyC': handleCue('A'); break;
+        case 'KeyK': handleCue('B'); break;
+        case 'KeyS': handleSync('A'); break;
+        case 'KeyB': handleSync('B'); break;
+        case 'KeyZ': setChannelA((prev) => ({ ...prev, killLow: !prev.killLow })); break;
+        case 'KeyM': setChannelB((prev) => ({ ...prev, killLow: !prev.killLow })); break;
+        case 'BracketLeft': handleNudge('A', -0.03); break;
+        case 'BracketRight': handleNudge('A', 0.03); break;
+        case 'Minus': handleNudge('B', -0.03); break;
+        case 'Equal': handleNudge('B', 0.03); break;
+        case 'ArrowLeft': setMixer((prev) => ({ ...prev, crossfader: Math.max(-1, prev.crossfader - 0.1) })); break;
+        case 'ArrowRight': setMixer((prev) => ({ ...prev, crossfader: Math.min(1, prev.crossfader + 0.1) })); break;
+        case 'KeyL': setLibraryCollapsed((prev) => !prev); break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [deckA, deckB]);
+  }, [handlePlayPause, handleCue, handleSync, handleNudge]);
 
   if (isLoading) {
     return (
-      <div className="w-screen h-screen flex flex-col items-center justify-center bg-[#090B10] text-slate-100 font-mono select-none">
-        <div className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-500 to-violet-600 flex items-center justify-center shadow-glow-cyan mb-4 animate-pulse">
-          <Disc size={32} className="text-black animate-spin-slow" />
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-[#07090D] relative overflow-hidden">
+        <div className="absolute inset-0 stage-glow-a" />
+        <div className="absolute inset-0 stage-glow-b" />
+        <div className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-[#00E5FF] to-[#8B5CF6] flex items-center justify-center shadow-glow-cyan mb-4 animate-pulse">
+          <div className="w-11 h-11 rounded-full bg-[#07090D] border border-[#252D3A] flex items-center justify-center">
+            <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#00E5FF] to-[#8B5CF6]" />
+          </div>
         </div>
-        <h1 className="text-lg font-black tracking-widest text-white mb-1">
-          NIGHT<span className="text-cyan-400">SHIFT</span>
+        <h1 className="font-sans font-bold text-xl tracking-[0.18em] text-[#F4F7FC]">
+          NIGHT<span className="text-[#00E5FF]">SHIFT</span>
         </h1>
-        <p className="text-xs text-slate-400">INITIALIZING AUDIO ENGINE & WAVEFORMS...</p>
+        <p className="mt-1 text-[10px] font-mono tracking-[0.25em] text-[#8490A3]">INITIALIZING AUDIO ENGINE & WAVEFORMS</p>
       </div>
     );
   }
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-[#090B10] text-slate-100 overflow-hidden font-sans select-none">
-      {/* 1. Pro Top Navigation Bar */}
-      <TopNavBar
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        isRecording={isRecording}
-        onToggleRecording={handleToggleRecording}
-        masterVolume={mixer.masterVolume}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenHelp={() => setIsHelpOpen(true)}
-      />
-
-      {/* 2. Main High-Density DJ Workspace */}
-      <div className="flex-1 flex flex-col overflow-hidden p-2 gap-2">
-        {/* Stacked Scrolling Audio Waveforms with Beat Phase Meter (Serato / Rekordbox Style) */}
-        {viewMode !== 'library' && (
-          <StackedWaveformsContainer
-            deckA={deckA}
-            deckB={deckB}
-            onSeekDeckA={(t) => handleSeek('A', t)}
-            onSeekDeckB={(t) => handleSeek('B', t)}
-            onScratchDeckA={(delta) => handleScratch('A', delta)}
-            onScratchDeckB={(delta) => handleScratch('B', delta)}
-          />
-        )}
-
-        {/* Dual DJ Decks + Central Hardware Mixer */}
-        {viewMode !== 'library' && (
-          <div className="flex flex-1 gap-2 min-h-0">
-            {/* Deck A — Electric Cyan Theme */}
-            <DjDeck
-              deck={deckA}
-              colorScheme="cyan"
-              onPlayPause={() => handlePlayPause('A')}
-              onCue={() => handleCue('A')}
-              onSync={() => handleSync('A')}
-              onToggleMaster={() => setDeckA((prev) => ({ ...prev, isMaster: !prev.isMaster }))}
-              onSeek={(t) => handleSeek('A', t)}
-              onScratch={(delta) => handleScratch('A', delta)}
-              onNudge={(amt) => handleNudge('A', amt)}
-              onPitchChange={(p) => handlePitchChange('A', p)}
-              onRangeChange={(r) => setDeckA((prev) => ({ ...prev, pitchRange: r }))}
-              onResetPitch={() => handlePitchChange('A', 0)}
-              onToggleKeyLock={() => setDeckA((prev) => ({ ...prev, isKeyLocked: !prev.isKeyLocked }))}
-              onToggleSlip={() => setDeckA((prev) => ({ ...prev, isSlipMode: !prev.isSlipMode }))}
-              onToggleQuantize={() => setDeckA((prev) => ({ ...prev, isQuantize: !prev.isQuantize }))}
-              onSetAutoLoop={(b) => handleSetAutoLoop('A', b)}
-              onToggleLoop={() => handleToggleLoop('A')}
-              onHalveLoop={() => handleHalveLoop('A')}
-              onDoubleLoop={() => handleDoubleLoop('A')}
-              onSetLoopIn={() => handleSeek('A', deckA.currentTime)}
-              onSetLoopOut={() => handleSetAutoLoop('A', 4)}
-              onJumpToCue={(c) => handleJumpToCue('A', c)}
-              onSetCue={(id) => handleSetCue('A', id)}
-              onDeleteCue={(id) => handleDeleteCue('A', id)}
-              onBeatJump={(b) => handleBeatJump('A', b)}
-              onTriggerSample={handleTriggerSample}
-              onPadFx={(fx) => handlePadFx('A', fx)}
-            />
-
-            {/* Central Professional DJ Mixer */}
-            <CentralMixer
-              channelA={channelA}
-              channelB={channelB}
-              mixer={mixer}
-              onUpdateChannelA={(patch) => setChannelA((prev) => ({ ...prev, ...patch }))}
-              onUpdateChannelB={(patch) => setChannelB((prev) => ({ ...prev, ...patch }))}
-              onUpdateMixer={(patch) => setMixer((prev) => ({ ...prev, ...patch }))}
-            />
-
-            {/* Deck B — Vivid Violet / Magenta Theme */}
-            <DjDeck
-              deck={deckB}
-              colorScheme="violet"
-              onPlayPause={() => handlePlayPause('B')}
-              onCue={() => handleCue('B')}
-              onSync={() => handleSync('B')}
-              onToggleMaster={() => setDeckB((prev) => ({ ...prev, isMaster: !prev.isMaster }))}
-              onSeek={(t) => handleSeek('B', t)}
-              onScratch={(delta) => handleScratch('B', delta)}
-              onNudge={(amt) => handleNudge('B', amt)}
-              onPitchChange={(p) => handlePitchChange('B', p)}
-              onRangeChange={(r) => setDeckB((prev) => ({ ...prev, pitchRange: r }))}
-              onResetPitch={() => handlePitchChange('B', 0)}
-              onToggleKeyLock={() => setDeckB((prev) => ({ ...prev, isKeyLocked: !prev.isKeyLocked }))}
-              onToggleSlip={() => setDeckB((prev) => ({ ...prev, isSlipMode: !prev.isSlipMode }))}
-              onToggleQuantize={() => setDeckB((prev) => ({ ...prev, isQuantize: !prev.isQuantize }))}
-              onSetAutoLoop={(b) => handleSetAutoLoop('B', b)}
-              onToggleLoop={() => handleToggleLoop('B')}
-              onHalveLoop={() => handleHalveLoop('B')}
-              onDoubleLoop={() => handleDoubleLoop('B')}
-              onSetLoopIn={() => handleSeek('B', deckB.currentTime)}
-              onSetLoopOut={() => handleSetAutoLoop('B', 4)}
-              onJumpToCue={(c) => handleJumpToCue('B', c)}
-              onSetCue={(id) => handleSetCue('B', id)}
-              onDeleteCue={(id) => handleDeleteCue('B', id)}
-              onBeatJump={(b) => handleBeatJump('B', b)}
-              onTriggerSample={handleTriggerSample}
-              onPadFx={(fx) => handlePadFx('B', fx)}
-            />
-          </div>
-        )}
-
-        {/* 3. Bottom Track Library / Crate Browser */}
-        <div className={viewMode === 'library' ? 'flex-1 flex overflow-hidden' : 'h-[235px] flex overflow-hidden'}>
-          <TrackLibrary
-            tracks={tracks}
-            deckATrackId={deckA.track?.id || null}
-            deckBTrackId={deckB.track?.id || null}
-            onLoadTrackA={handleLoadTrackA}
-            onLoadTrackB={handleLoadTrackB}
-            onImportFile={handleImportFile}
-            activeCamelotKey={deckA.isPlaying ? deckA.track?.key : deckB.isPlaying ? deckB.track?.key : undefined}
-          />
-        </div>
+    <div className="w-screen h-screen bg-[#07090D] overflow-hidden flex flex-col">
+      {/* Ambient stage lighting */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 stage-glow-a" />
+        <div className="absolute inset-0 stage-glow-b" />
+        <div className="absolute inset-0 stage-vignette" />
       </div>
 
-      {/* Preferences & Help Modals */}
+      <div className="relative z-10 flex flex-col h-full">
+        <TopNavBar
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          isRecording={isRecording}
+          onToggleRecording={handleToggleRecording}
+          deckA={deckA}
+          deckB={deckB}
+          masterMeterL={mixer.masterMeterL}
+          masterMeterR={mixer.masterMeterR}
+          libraryCollapsed={libraryCollapsed}
+          onToggleLibrary={() => setLibraryCollapsed((prev) => !prev)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenHelp={() => setIsHelpOpen(true)}
+        />
+
+        {viewMode === 'library' ? (
+          <div className="flex-1 overflow-hidden p-1">
+            <div className="h-full flex flex-col border border-[#252D3A] rounded-md overflow-hidden bg-[#0D1118]">
+              <TrackLibrary
+                tracks={tracks}
+                deckATrackId={deckA.track?.id ?? null}
+                deckBTrackId={deckB.track?.id ?? null}
+                onLoadTrackA={(t) => loadTrackToDeck('A', t)}
+                onLoadTrackB={(t) => loadTrackToDeck('B', t)}
+                onImportFile={handleImportFile}
+                activeCamelotKey={deckA.isPlaying ? deckA.track?.key : deckB.isPlaying ? deckB.track?.key : undefined}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Performance workspace: decks | waveforms + mixer | decks */}
+            <div className="flex-1 min-h-0 flex gap-1.5 p-1.5">
+              {/* Deck A — Electric Cyan */}
+              <DjDeck
+                deck={deckA}
+                colorScheme="cyan"
+                onPlayPause={() => handlePlayPause('A')}
+                onCue={() => handleCue('A')}
+                onSync={() => handleSync('A')}
+                onToggleMaster={() => setDeckA((prev) => ({ ...prev, isMaster: !prev.isMaster }))}
+                onSeek={(t) => handleSeek('A', t)}
+                onScratch={(delta) => handleScratch('A', delta)}
+                onNudge={(amt) => handleNudge('A', amt)}
+                onPitchChange={(p) => handlePitchChange('A', p)}
+                onRangeChange={(r) => setDeckA((prev) => ({ ...prev, pitchRange: r }))}
+                onResetPitch={() => handlePitchChange('A', 0)}
+                onToggleKeyLock={() => setDeckA((prev) => ({ ...prev, isKeyLocked: !prev.isKeyLocked }))}
+                onToggleSlip={() => setDeckA((prev) => ({ ...prev, isSlipMode: !prev.isSlipMode }))}
+                onToggleQuantize={() => setDeckA((prev) => ({ ...prev, isQuantize: !prev.isQuantize }))}
+                onSetAutoLoop={(b) => handleSetAutoLoop('A', b)}
+                onToggleLoop={() => handleToggleLoop('A')}
+                onHalveLoop={() => handleHalveLoop('A')}
+                onDoubleLoop={() => handleDoubleLoop('A')}
+                onJumpToCue={(c) => handleJumpToCue('A', c)}
+                onSetCue={(id) => handleSetCue('A', id)}
+                onDeleteCue={(id) => handleDeleteCue('A', id)}
+                onBeatJump={(b) => handleBeatJump('A', b)}
+                onTriggerSample={handleTriggerSample}
+                onPadFx={(fx) => handlePadFx('A', fx)}
+              />
+
+              {/* Central column: synchronized waveforms over the mixer */}
+              <div className="w-[350px] xl:w-[390px] shrink-0 flex flex-col gap-1.5 min-h-0">
+                <div className="flex-1 min-h-0">
+                  <StackedWaveformsContainer
+                    deckA={deckA}
+                    deckB={deckB}
+                    onSeekDeckA={(t) => handleSeek('A', t)}
+                    onSeekDeckB={(t) => handleSeek('B', t)}
+                    onScratchDeckA={(d) => handleScratch('A', d)}
+                    onScratchDeckB={(d) => handleScratch('B', d)}
+                  />
+                </div>
+                <CentralMixer
+                  channelA={channelA}
+                  channelB={channelB}
+                  mixer={mixer}
+                  onUpdateChannelA={(patch) => setChannelA((prev) => ({ ...prev, ...patch }))}
+                  onUpdateChannelB={(patch) => setChannelB((prev) => ({ ...prev, ...patch }))}
+                  onUpdateMixer={(patch) => setMixer((prev) => ({ ...prev, ...patch }))}
+                />
+              </div>
+
+              {/* Deck B — Violet / Magenta */}
+              <DjDeck
+                deck={deckB}
+                colorScheme="violet"
+                onPlayPause={() => handlePlayPause('B')}
+                onCue={() => handleCue('B')}
+                onSync={() => handleSync('B')}
+                onToggleMaster={() => setDeckB((prev) => ({ ...prev, isMaster: !prev.isMaster }))}
+                onSeek={(t) => handleSeek('B', t)}
+                onScratch={(delta) => handleScratch('B', delta)}
+                onNudge={(amt) => handleNudge('B', amt)}
+                onPitchChange={(p) => handlePitchChange('B', p)}
+                onRangeChange={(r) => setDeckB((prev) => ({ ...prev, pitchRange: r }))}
+                onResetPitch={() => handlePitchChange('B', 0)}
+                onToggleKeyLock={() => setDeckB((prev) => ({ ...prev, isKeyLocked: !prev.isKeyLocked }))}
+                onToggleSlip={() => setDeckB((prev) => ({ ...prev, isSlipMode: !prev.isSlipMode }))}
+                onToggleQuantize={() => setDeckB((prev) => ({ ...prev, isQuantize: !prev.isQuantize }))}
+                onSetAutoLoop={(b) => handleSetAutoLoop('B', b)}
+                onToggleLoop={() => handleToggleLoop('B')}
+                onHalveLoop={() => handleHalveLoop('B')}
+                onDoubleLoop={() => handleDoubleLoop('B')}
+                onJumpToCue={(c) => handleJumpToCue('B', c)}
+                onSetCue={(id) => handleSetCue('B', id)}
+                onDeleteCue={(id) => handleDeleteCue('B', id)}
+                onBeatJump={(b) => handleBeatJump('B', b)}
+                onTriggerSample={handleTriggerSample}
+                onPadFx={(fx) => handlePadFx('B', fx)}
+              />
+            </div>
+
+            {/* Collapsible Music Library */}
+            <div
+              className={`shrink-0 border-t border-[#252D3A] transition-[height] duration-200 ease-out overflow-hidden ${
+                libraryCollapsed ? 'h-8' : 'h-[240px] 2xl:h-[280px]'
+              }`}
+            >
+              <TrackLibrary
+                tracks={tracks}
+                collapsedRow={libraryCollapsed}
+                onToggleCollapsed={() => setLibraryCollapsed((prev) => !prev)}
+                deckATrackId={deckA.track?.id ?? null}
+                deckBTrackId={deckB.track?.id ?? null}
+                onLoadTrackA={(t) => loadTrackToDeck('A', t)}
+                onLoadTrackB={(t) => loadTrackToDeck('B', t)}
+                onImportFile={handleImportFile}
+                activeCamelotKey={deckA.isPlaying ? deckA.track?.key : deckB.isPlaying ? deckB.track?.key : undefined}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </div>

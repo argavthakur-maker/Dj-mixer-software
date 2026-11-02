@@ -1,6 +1,5 @@
 import React from 'react';
 import type { DeckState } from '../../types/dj';
-import { Repeat } from 'lucide-react';
 
 interface LoopSectionProps {
   deck: DeckState;
@@ -13,6 +12,11 @@ interface LoopSectionProps {
   onSetLoopOut: () => void;
 }
 
+const THEME = {
+  cyan: { accent: '#00E5FF' },
+  violet: { accent: '#8B5CF6' },
+} as const;
+
 export const LoopSection: React.FC<LoopSectionProps> = ({
   deck,
   colorScheme,
@@ -23,91 +27,99 @@ export const LoopSection: React.FC<LoopSectionProps> = ({
   onSetLoopIn,
   onSetLoopOut,
 }) => {
+  const accent = THEME[colorScheme].accent;
   const loopBeats = [0.5, 1, 2, 4, 8, 16];
   const activeLoopBeats = deck.loop.active ? deck.loop.lengthInBeats : null;
 
   return (
-    <div className={`flex flex-col gap-1.5 p-2 rounded bg-[#0D1017] border transition-all ${
-      deck.loop.active 
-        ? (colorScheme === 'cyan' ? 'border-cyan-500/70 shadow-glow-cyan' : 'border-fuchsia-500/70 shadow-glow-magenta')
-        : 'border-[#1E2533]'
-    }`}>
-      {/* Top Header Row: Loop In / Out / Reloop */}
-      <div className="flex items-center justify-between gap-1">
-        <div className="flex items-center gap-1">
-          <Repeat size={12} className={deck.loop.active ? (colorScheme === 'cyan' ? 'text-cyan-400' : 'text-fuchsia-400') : 'text-slate-500'} />
-          <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">LOOP</span>
-          {deck.loop.active && (
-            <span className="text-[9px] font-mono font-bold px-1 rounded bg-amber-950/70 text-amber-400 border border-amber-500/30 animate-pulse">
-              {deck.loop.lengthInBeats} BEAT
-            </span>
-          )}
-        </div>
+    <div
+      className="bg-[#0A0E14] border rounded-[3px] p-1.5 transition-[border-color] duration-200"
+      style={{ borderColor: deck.loop.active ? `${accent}88` : '#1C232E' }}
+    >
+      <div className="flex items-center gap-1.5">
+        {/* Loop header + beat label */}
+        <span
+          className="text-[8px] font-mono font-bold tracking-[0.25em] shrink-0"
+          style={{ color: deck.loop.active ? accent : '#5A6678' }}
+        >
+          LOOP
+        </span>
+        {deck.loop.active && (
+          <span
+            className="text-[8px] font-mono font-bold px-1 py-px rounded-[2px] shrink-0"
+            style={{ color: accent, backgroundColor: `${accent}14`, border: `1px solid ${accent}44` }}
+          >
+            {deck.loop.lengthInBeats} BEAT
+          </span>
+        )}
 
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onSetLoopIn}
-            title="Set Manual Loop In Point"
-            className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#141924] hover:bg-[#1E2536] text-slate-300 border border-[#252B36] transition-colors"
-          >
-            IN
-          </button>
-          <button
-            onClick={onSetLoopOut}
-            title="Set Manual Loop Out Point"
-            className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#141924] hover:bg-[#1E2536] text-slate-300 border border-[#252B36] transition-colors"
-          >
-            OUT
-          </button>
-          <button
-            onClick={onToggleLoop}
-            title="Toggle Loop On/Off"
-            className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold border transition-all ${
-              deck.loop.active
-                ? 'bg-amber-500 text-black border-amber-400 shadow-glow-amber'
-                : 'bg-[#141924] text-slate-400 border-[#252B36] hover:text-white'
-            }`}
-          >
-            {deck.loop.active ? 'EXIT' : 'RELOOP'}
-          </button>
-        </div>
+        <div className="flex-1" />
+
+        {/* Manual loop controls */}
+        <button
+          onClick={onSetLoopIn}
+          title="Set manual loop in-point at current position"
+          className="px-1.5 py-0.5 rounded-[2px] text-[9px] font-mono font-bold bg-[#111722] hover:bg-[#161D29] text-[#A7B1C2] border border-[#252D3A] transition-colors"
+        >
+          IN
+        </button>
+        <button
+          onClick={onSetLoopOut}
+          title="Set manual loop out-point and activate"
+          className="px-1.5 py-0.5 rounded-[2px] text-[9px] font-mono font-bold bg-[#111722] hover:bg-[#161D29] text-[#A7B1C2] border border-[#252D3A] transition-colors"
+        >
+          OUT
+        </button>
+        <button
+          onClick={onToggleLoop}
+          title="Toggle loop on/off"
+          aria-pressed={deck.loop.active}
+          className="px-2 py-0.5 rounded-[2px] text-[9px] font-mono font-bold transition-all"
+          style={
+            deck.loop.active
+              ? { color: '#07090D', backgroundColor: accent, border: `1px solid ${accent}` }
+              : { color: '#A7B1C2', backgroundColor: '#111722', border: '1px solid #252D3A' }
+          }
+        >
+          {deck.loop.active ? 'EXIT' : 'RELOOP'}
+        </button>
       </div>
 
-      {/* Auto Loop Beat Grid Buttons: 1/2, 1, 2, 4, 8, 16 beats */}
-      <div className="grid grid-cols-6 gap-1">
+      {/* Auto loop + halve/double row */}
+      <div className="flex items-center gap-1 mt-1">
         {loopBeats.map((beats) => {
           const isActive = deck.loop.active && activeLoopBeats === beats;
           return (
             <button
               key={beats}
               onClick={() => onSetAutoLoop(beats)}
-              className={`py-1 rounded text-[10px] font-mono font-bold transition-all border ${
+              title={`Set ${beats === 0.5 ? '1/2' : beats}-beat auto loop`}
+              aria-pressed={isActive}
+              className="flex-1 py-0.5 rounded-[2px] text-[9px] font-mono font-bold transition-all border"
+              style={
                 isActive
-                  ? colorScheme === 'cyan'
-                    ? 'bg-cyan-500 text-black border-cyan-400 shadow-glow-cyan'
-                    : 'bg-fuchsia-500 text-black border-fuchsia-400 shadow-glow-magenta'
-                  : 'bg-[#121620] hover:bg-[#1A212E] text-slate-300 border-[#202735]'
-              }`}
+                  ? { color: '#07090D', backgroundColor: accent, borderColor: accent }
+                  : { color: '#A7B1C2', backgroundColor: '#10151D', borderColor: '#1C232E' }
+              }
             >
               {beats === 0.5 ? '1/2' : beats}
             </button>
           );
         })}
-      </div>
 
-      {/* Halve / Double Loop Length */}
-      <div className="flex items-center justify-between gap-2 pt-0.5 border-t border-[#18202C]">
         <button
           onClick={onHalveLoop}
-          title="Halve Loop Length (1/2x)"
-          className="flex-1 py-0.5 rounded text-[9px] font-mono font-bold bg-[#11151F] hover:bg-[#1A212E] text-slate-400 hover:text-white border border-[#202735] transition-colors text-center"
+          title="Halve loop length"
+          aria-label="Halve loop length"
+          className="w-8 py-0.5 rounded-[2px] text-[9px] font-mono font-bold bg-[#111722] hover:bg-[#161D29] text-[#A7B1C2] border border-[#252D3A] transition-colors"
         >
-          1/2X
+          ½X
         </button>
         <button
           onClick={onDoubleLoop}
-          title="Double Loop Length (2x)"
-          className="flex-1 py-0.5 rounded text-[9px] font-mono font-bold bg-[#11151F] hover:bg-[#1A212E] text-slate-400 hover:text-white border border-[#202735] transition-colors text-center"
+          title="Double loop length"
+          aria-label="Double loop length"
+          className="w-8 py-0.5 rounded-[2px] text-[9px] font-mono font-bold bg-[#111722] hover:bg-[#161D29] text-[#A7B1C2] border border-[#252D3A] transition-colors"
         >
           2X
         </button>

@@ -12,7 +12,7 @@ export const OverviewWaveform: React.FC<OverviewWaveformProps> = ({
   deck,
   colorScheme,
   onSeek,
-  height = 36,
+  height = 32,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -27,15 +27,15 @@ export const OverviewWaveform: React.FC<OverviewWaveformProps> = ({
     ? (deck.currentTime / deck.track.duration) * 100
     : 0;
 
-  const primaryColor = colorScheme === 'cyan' ? '#00E5FF' : '#D946EF';
-  const playedTint = colorScheme === 'cyan' ? 'rgba(0, 229, 255, 0.22)' : 'rgba(217, 70, 239, 0.22)';
+  const primaryColor = colorScheme === 'cyan' ? '#20C8F4' : '#A855F7';
+  const playedTint = colorScheme === 'cyan' ? 'rgba(32, 200, 244, 0.18)' : 'rgba(168, 85, 247, 0.18)';
 
   return (
     <div
       ref={containerRef}
       onClick={handleClick}
       style={{ height }}
-      className="relative w-full rounded bg-[#0A0D14] border border-[#1A212E] cursor-pointer overflow-hidden group hover:border-[#2E384D] transition-colors"
+      className="relative w-full rounded-md bg-[#080D16] border border-[#26364A] cursor-pointer overflow-hidden group hover:border-[#374960] transition-colors select-none"
     >
       {/* Played time progress overlay */}
       <div
@@ -48,13 +48,12 @@ export const OverviewWaveform: React.FC<OverviewWaveformProps> = ({
       />
 
       {/* Mini waveform bars */}
-      <div className="absolute inset-0 flex items-center px-1 gap-[1px]">
+      <div className="absolute inset-0 flex items-center px-1.5 gap-[1px]">
         {deck.track?.waveformData ? (
-          // Downsample waveform data to 120 bars for smooth display
           Array.from({ length: 90 }).map((_, idx) => {
             const dataIdx = Math.floor((idx / 90) * deck.track!.waveformData!.length);
             const val = deck.track!.waveformData![dataIdx] || 0.1;
-            const barH = Math.max(4, Math.round(val * (height - 8)));
+            const barH = Math.max(3, Math.round(val * (height - 8)));
             const isPassed = (idx / 90) * 100 <= progressPercent;
 
             return (
@@ -63,15 +62,13 @@ export const OverviewWaveform: React.FC<OverviewWaveformProps> = ({
                 className="flex-1 rounded-[0.5px] transition-colors"
                 style={{
                   height: `${barH}px`,
-                  backgroundColor: isPassed
-                    ? primaryColor
-                    : colorScheme === 'cyan' ? '#1E293B' : '#2A1B38',
+                  backgroundColor: isPassed ? primaryColor : '#141F30',
                 }}
               />
             );
           })
         ) : (
-          <div className="w-full text-center text-[10px] font-mono text-slate-600">
+          <div className="w-full text-center text-[11px] font-mono text-[#73849B]">
             No track loaded
           </div>
         )}
@@ -80,7 +77,7 @@ export const OverviewWaveform: React.FC<OverviewWaveformProps> = ({
       {/* Loop active region marker */}
       {deck.loop.active && deck.track && (
         <div
-          className="absolute top-0 bottom-0 pointer-events-none border-x-2 border-amber-400 bg-amber-400/20"
+          className="absolute top-0 bottom-0 pointer-events-none border-x-2 border-[#FBBF24] bg-[#FBBF24]/15"
           style={{
             left: `${(deck.loop.start / deck.track.duration) * 100}%`,
             width: `${((deck.loop.end - deck.loop.start) / deck.track.duration) * 100}%`,
@@ -104,12 +101,6 @@ export const OverviewWaveform: React.FC<OverviewWaveformProps> = ({
           </div>
         );
       })}
-
-      {/* Needle search hover line */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
-        <div className="h-full w-[1px] bg-white/40 shadow-glow-cyan" />
-      </div>
     </div>
   );
 };
-

@@ -7,6 +7,7 @@ import { PitchFader } from './PitchFader';
 import { LoopSection } from './LoopSection';
 import { PerformancePads } from './PerformancePads';
 import { DeckControls } from './DeckControls';
+import { History, Zap } from 'lucide-react';
 
 interface DjDeckProps {
   deck: DeckState;
@@ -38,6 +39,11 @@ interface DjDeckProps {
   onPadFx: (fxType: string) => void;
 }
 
+const THEME = {
+  cyan: { accent: '#00E5FF', border: 'rgba(0,229,255,0.5)', glow: 'rgba(0,229,255,0.06)' },
+  violet: { accent: '#8B5CF6', border: 'rgba(139,92,246,0.5)', glow: 'rgba(139,92,246,0.07)' },
+} as const;
+
 export const DjDeck: React.FC<DjDeckProps> = ({
   deck,
   colorScheme,
@@ -67,11 +73,21 @@ export const DjDeck: React.FC<DjDeckProps> = ({
   onTriggerSample,
   onPadFx,
 }) => {
-  const borderHighlight = colorScheme === 'cyan' ? 'border-[#1E293B] hover:border-cyan-500/40' : 'border-[#1E293B] hover:border-fuchsia-500/40';
+  const theme = THEME[colorScheme];
+  const isPlaying = deck.isPlaying;
 
   return (
-    <div className={`flex flex-col flex-1 bg-[#11151D] border ${borderHighlight} rounded-lg shadow-xl overflow-hidden transition-all duration-200`}>
-      {/* 1. Deck Header: Title, Artist, Large BPM, Key, Time */}
+    <section
+      aria-label={`Deck ${deck.id}`}
+      className="flex flex-col flex-1 min-w-0 min-h-0 bg-[#0D1118] rounded-md overflow-hidden shadow-panel transition-[border-color,box-shadow] duration-300"
+      style={{
+        border: `1px solid ${isPlaying ? theme.border : '#252D3A'}`,
+        boxShadow: isPlaying
+          ? `0 0 26px -10px ${theme.glow}, 0 8px 24px -12px rgba(0,0,0,0.8)`
+          : '0 8px 24px -12px rgba(0,0,0,0.8)',
+      }}
+    >
+      {/* 1. Deck header: identity + BPM stat strip */}
       <DeckHeader
         deck={deck}
         colorScheme={colorScheme}
@@ -80,44 +96,62 @@ export const DjDeck: React.FC<DjDeckProps> = ({
         onToggleQuantize={onToggleQuantize}
       />
 
-      {/* 2. Overview Waveform / Needle Search */}
-      <div className="px-2.5 pt-2">
+      {/* 2. Track overview search strip */}
+      <div className="px-2.5 pt-2 shrink-0">
+        <div className="flex items-center gap-1.5 mb-1">
+          <History size={10} className="text-[#5A6678]" />
+          <span className="text-[8px] font-mono font-bold tracking-[0.25em] text-[#5A6678]">TRACK OVERVIEW</span>
+        </div>
         <OverviewWaveform
           deck={deck}
           colorScheme={colorScheme}
           onSeek={onSeek}
-          height={32}
+          height={30}
         />
       </div>
 
-      {/* 3. Turntable Platter & Pitch Fader Section */}
-      <div className="flex items-center justify-between px-3 py-2 gap-3">
-        {/* Large Jog Wheel with Scratching & Vinyl Grooves */}
-        <div className="flex-1 flex justify-center">
-          <JogWheel
-            deck={deck}
-            colorScheme={colorScheme}
-            size={185}
-            onScratch={onScratch}
-            onSeek={onSeek}
-            onNudge={onNudge}
-          />
+      {/* 3. Turntable platter + precision pitch fader */}
+      <div className="flex items-stretch justify-center gap-2.5 px-3 flex-1 min-h-0 py-2">
+        <div className="flex-1 flex items-center justify-center min-w-0">
+          <div className="origin-center" style={{ transform: 'scale(0.82)' }}>
+            <JogWheel
+              deck={deck}
+              colorScheme={colorScheme}
+              size={208}
+              onScratch={onScratch}
+              onSeek={onSeek}
+              onNudge={onNudge}
+            />
+          </div>
         </div>
 
-        {/* Precision Vertical Pitch Fader */}
-        <div className="w-16">
-          <PitchFader
-            deck={deck}
-            colorScheme={colorScheme}
-            onPitchChange={onPitchChange}
-            onRangeChange={onRangeChange}
-            onReset={onResetPitch}
-          />
-        </div>
+        <PitchFader
+          deck={deck}
+          colorScheme={colorScheme}
+          onPitchChange={onPitchChange}
+          onRangeChange={onRangeChange}
+          onReset={onResetPitch}
+        />
       </div>
 
-      {/* 4. Auto Loop & Manual Loop Controls */}
-      <div className="px-2.5 py-1">
+      {/* 4. Workflow: loops + performance pads */}
+      <div className="px-2.5 pb-2 flex flex-col gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <Zap size={10} className="text-[#5A6678]" />
+          <span className="text-[8px] font-mono font-bold tracking-[0.25em] text-[#5A6678]">
+            {deck.activePadMode === 'hotcue' ? 'PERFORMANCE PADS' : 'PERFORMANCE PADS'}
+          </span>
+        </div>
+        <PerformancePads
+          deck={deck}
+          colorScheme={colorScheme}
+          onJumpToCue={onJumpToCue}
+          onSetCue={onSetCue}
+          onDeleteCue={onDeleteCue}
+          onBeatJump={onBeatJump}
+          onTriggerSample={onTriggerSample}
+          onPadFx={onPadFx}
+        />
         <LoopSection
           deck={deck}
           colorScheme={colorScheme}
@@ -130,32 +164,15 @@ export const DjDeck: React.FC<DjDeckProps> = ({
         />
       </div>
 
-      {/* 5. Performance Pads: Hot Cues, Pad FX, Beat Jump, Sampler */}
-      <div className="px-2.5 py-1">
-        <PerformancePads
-          deck={deck}
-          colorScheme={colorScheme}
-          onJumpToCue={onJumpToCue}
-          onSetCue={onSetCue}
-          onDeleteCue={onDeleteCue}
-          onBeatJump={onBeatJump}
-          onTriggerSample={onTriggerSample}
-          onPadFx={onPadFx}
-        />
-      </div>
-
-      {/* 6. Hardware Play/Pause, CUE, SYNC Buttons */}
-      <div className="mt-auto">
-        <DeckControls
-          deck={deck}
-          colorScheme={colorScheme}
-          onPlayPause={onPlayPause}
-          onCue={onCue}
-          onSync={onSync}
-          onToggleMaster={onToggleMaster}
-        />
-      </div>
-    </div>
+      {/* 5. Hardware transport */}
+      <DeckControls
+        deck={deck}
+        colorScheme={colorScheme}
+        onPlayPause={onPlayPause}
+        onCue={onCue}
+        onSync={onSync}
+        onToggleMaster={onToggleMaster}
+      />
+    </section>
   );
 };
-

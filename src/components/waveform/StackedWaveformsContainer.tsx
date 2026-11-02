@@ -37,43 +37,43 @@ export const StackedWaveformsContainer: React.FC<StackedWaveformsContainerProps>
     let diff = beatPhaseA - beatPhaseB;
     if (diff > 0.5) diff -= 1.0;
     if (diff < -0.5) diff += 1.0;
-    phaseDiff = diff * 2; // scale to [-1, 1]
+    phaseDiff = diff * 2;
     isInPhase = Math.abs(diff) < 0.04;
   }
 
   return (
-    <div className="relative w-full bg-[#0D1017] border border-[#252B36] rounded-md p-2 flex flex-col gap-1.5 shadow-2xl">
+    <div className="relative w-full bg-[#101827] border border-[#26364A] rounded-lg p-3 flex flex-col gap-2.5 shadow-panel">
       {/* Top Header Toolbar */}
-      <div className="flex items-center justify-between px-2 py-0.5 border-b border-[#1A212E] text-[11px] font-mono">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-glow-cyan animate-pulse" />
+      <div className="flex items-center justify-between px-1 pb-1.5 border-b border-[#26364A] text-xs font-mono">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-2 text-[#20C8F4] font-semibold">
+            <span className="w-2 h-2 rounded-full bg-[#20C8F4]" />
             DECK A: {deckA.track ? `${deckA.currentBpm.toFixed(2)} BPM` : 'EMPTY'}
           </span>
-          <span className="text-[#323B49]">|</span>
-          <span className="flex items-center gap-1.5 text-fuchsia-400 font-bold">
-            <span className="w-2 h-2 rounded-full bg-fuchsia-400 shadow-glow-magenta animate-pulse" />
+          <span className="text-[#26364A]">|</span>
+          <span className="flex items-center gap-2 text-[#A855F7] font-semibold">
+            <span className="w-2 h-2 rounded-full bg-[#A855F7]" />
             DECK B: {deckB.track ? `${deckB.currentBpm.toFixed(2)} BPM` : 'EMPTY'}
           </span>
         </div>
 
-        {/* Center Beat Phase Meter (Pioneer CDJ / Serato Beat Phase Indicator) */}
-        <div className="flex items-center gap-2">
-          <Activity size={13} className="text-slate-500" />
-          <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">BEAT PHASE</span>
-          <div className="relative w-36 h-3 bg-[#080A0F] rounded border border-[#252B36] overflow-hidden flex items-center justify-center">
+        {/* Center Beat Phase Meter */}
+        <div className="flex items-center gap-2.5">
+          <Activity size={14} className="text-[#73849B]" />
+          <span className="text-[11px] text-[#A6B4C8] font-medium tracking-wide">PHASE</span>
+          <div className="relative w-40 h-3.5 bg-[#080D16] rounded border border-[#26364A] overflow-hidden flex items-center justify-center">
             {/* Center target tick */}
-            <div className={`absolute top-0 bottom-0 w-[2px] z-10 ${isInPhase ? 'bg-emerald-400 shadow-glow-emerald' : 'bg-slate-500'}`} />
+            <div className={`absolute top-0 bottom-0 w-[2px] z-10 ${isInPhase ? 'bg-[#34D399]' : 'bg-[#73849B]'}`} />
             
             {/* Phase drift bar */}
             {deckA.isPlaying && deckB.isPlaying && (
               <div
                 className={`absolute top-0.5 bottom-0.5 w-3 rounded-sm transition-all duration-75 ${
                   isInPhase
-                    ? 'bg-emerald-400 shadow-glow-emerald'
+                    ? 'bg-[#34D399]'
                     : phaseDiff < 0
-                    ? 'bg-cyan-400'
-                    : 'bg-fuchsia-400'
+                    ? 'bg-[#20C8F4]'
+                    : 'bg-[#A855F7]'
                 }`}
                 style={{
                   left: `calc(50% + ${phaseDiff * 45}% - 6px)`,
@@ -82,36 +82,40 @@ export const StackedWaveformsContainer: React.FC<StackedWaveformsContainerProps>
             )}
           </div>
           {isInPhase && (
-            <span className="text-[9px] font-bold text-emerald-400 px-1 rounded bg-emerald-950/60 border border-emerald-500/30">
+            <span className="text-[10px] font-bold text-[#34D399] px-1.5 py-0.5 rounded bg-[#34D399]/10 border border-[#34D399]/30">
               LOCKED
             </span>
           )}
         </div>
 
         {/* Zoom and Grid Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowBeatGrid(!showBeatGrid)}
             title="Toggle Beat Grid"
-            className={`p-1 rounded text-xs transition-colors ${
-              showBeatGrid ? 'bg-cyan-950/70 text-cyan-400 border border-cyan-500/30' : 'text-slate-500 hover:text-slate-300'
+            className={`p-1.5 rounded-md text-xs transition-colors border ${
+              showBeatGrid 
+                ? 'bg-[#141F30] text-[#20C8F4] border-[#20C8F4]/40' 
+                : 'text-[#73849B] border-[#26364A] hover:text-[#F1F5F9]'
             }`}
           >
-            <Grid size={13} />
+            <Grid size={14} />
           </button>
-          <div className="flex items-center gap-0.5 bg-[#090B10] border border-[#252B36] rounded px-1">
+          <div className="flex items-center gap-1 bg-[#080D16] border border-[#26364A] rounded-md px-1 py-0.5">
             <button
               onClick={handleZoomOut}
               title="Zoom Out"
-              className="p-1 text-slate-400 hover:text-cyan-400 transition-colors"
+              className="p-1 text-[#A6B4C8] hover:text-[#20C8F4] transition-colors"
             >
               <ZoomOut size={13} />
             </button>
-            <span className="text-[10px] text-slate-400 font-mono w-7 text-center">{Math.round((zoom / 130) * 100)}%</span>
+            <span className="text-[11px] text-[#A6B4C8] font-mono w-9 text-center tabular-nums">
+              {Math.round((zoom / 130) * 100)}%
+            </span>
             <button
               onClick={handleZoomIn}
               title="Zoom In"
-              className="p-1 text-slate-400 hover:text-cyan-400 transition-colors"
+              className="p-1 text-[#A6B4C8] hover:text-[#20C8F4] transition-colors"
             >
               <ZoomIn size={13} />
             </button>
@@ -120,12 +124,12 @@ export const StackedWaveformsContainer: React.FC<StackedWaveformsContainerProps>
       </div>
 
       {/* Stacked Scrolling Waveforms */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <ScrollingWaveform
           deck={deckA}
           colorScheme="cyan"
           zoom={zoom}
-          height={78}
+          height={76}
           onSeek={onSeekDeckA}
           onScratch={onScratchDeckA}
           showBeatGrid={showBeatGrid}
@@ -134,7 +138,7 @@ export const StackedWaveformsContainer: React.FC<StackedWaveformsContainerProps>
           deck={deckB}
           colorScheme="violet"
           zoom={zoom}
-          height={78}
+          height={76}
           onSeek={onSeekDeckB}
           onScratch={onScratchDeckB}
           showBeatGrid={showBeatGrid}
@@ -143,4 +147,3 @@ export const StackedWaveformsContainer: React.FC<StackedWaveformsContainerProps>
     </div>
   );
 };
-

@@ -1,13 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import type { Track } from '../../types/dj';
+import { TrackArtwork } from '../common/TrackArtwork';
 import { 
   Search, 
   Folder, 
   Upload, 
-  Disc, 
-  Sparkles, 
-  ArrowLeftCircle, 
-  ArrowRightCircle
+  Sparkles
 } from 'lucide-react';
 
 interface TrackLibraryProps {
@@ -17,7 +15,7 @@ interface TrackLibraryProps {
   onLoadTrackA: (track: Track) => void;
   onLoadTrackB: (track: Track) => void;
   onImportFile: (file: File) => void;
-  activeCamelotKey?: string; // from playing deck to highlight harmonic matches
+  activeCamelotKey?: string;
 }
 
 export const TrackLibrary: React.FC<TrackLibraryProps> = ({
@@ -102,14 +100,6 @@ export const TrackLibrary: React.FC<TrackLibraryProps> = ({
     });
   }, [tracks, searchQuery, selectedCrate, bpmFilter, harmonicOnly, activeCamelotKey]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      for (let i = 0; i < e.target.files.length; i++) {
-        onImportFile(e.target.files[i]);
-      }
-    }
-  };
-
   const formatDuration = (sec: number) => {
     const mins = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
@@ -123,6 +113,14 @@ export const TrackLibrary: React.FC<TrackLibraryProps> = ({
       '#3B82F6', '#8B5CF6', '#A855F7', '#EC4899', '#F43F5E', '#84CC16'
     ];
     return colors[(num - 1) % colors.length];
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      for (let i = 0; i < e.target.files.length; i++) {
+        onImportFile(e.target.files[i]);
+      }
+    }
   };
 
   return (
@@ -174,7 +172,7 @@ export const TrackLibrary: React.FC<TrackLibraryProps> = ({
       {/* 2. Main Track Browser Area */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Search & Filter Toolbar */}
-        <div className="flex items-center justify-between p-2 gap-3 bg-[#0A0D14] border-b border-[#1C2330]">
+        <div className="flex items-center justify-between p-3 gap-3 bg-[#0A0D14] border-b border-[#1C2330]">
           {/* Search Input */}
           <div className="relative flex-1 max-w-md">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -183,7 +181,7 @@ export const TrackLibrary: React.FC<TrackLibraryProps> = ({
               placeholder="Search by Title, Artist, BPM, or Key..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#111622] text-slate-200 placeholder-slate-500 text-xs font-mono rounded pl-8 pr-3 py-1.5 border border-[#222B3B] focus:outline-none focus:border-cyan-400 transition-colors"
+              className="w-full bg-[#111622] text-slate-200 placeholder-slate-500 text-xs font-mono rounded pl-10 pr-3 py-2 border border-[#222B3B] focus:outline-none focus:border-cyan-400 transition-colors"
             />
           </div>
 
@@ -202,43 +200,44 @@ export const TrackLibrary: React.FC<TrackLibraryProps> = ({
                 <span>HARMONIC MATCH ({activeCamelotKey})</span>
               </button>
             )}
+          </div>
 
-            {/* Quick BPM Range Filters */}
-            <div className="flex items-center gap-1 bg-[#111622] border border-[#222B3B] rounded p-0.5 text-[10px] font-mono">
-              {(['all', 'house', 'techno', 'dnb'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setBpmFilter(mode)}
-                  className={`px-2 py-0.5 rounded uppercase font-bold transition-colors ${
-                    bpmFilter === mode
-                      ? 'bg-cyan-500 text-black'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {mode === 'all' ? 'ANY BPM' : mode}
-                </button>
-              ))}
-            </div>
+          {/* Quick BPM Range Filters */}
+          <div className="flex items-center gap-1 bg-[#111622] border border-[#222B3B] rounded p-0.5 text-[10px] font-mono">
+            {(['all', 'house', 'techno', 'dnb'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setBpmFilter(mode)}
+                className={`px-2 py-0.5 rounded uppercase font-bold transition-colors ${
+                  bpmFilter === mode
+                    ? 'bg-cyan-500 text-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {mode === 'all' ? 'ANY BPM' : mode}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Tracks Table */}
         <div className="flex-1 overflow-y-auto">
-          <table className="w-full border-collapse text-left text-xs font-mono">
+          <table className="w-full border-collapse text-left font-mono">
             <thead>
-              <tr className="sticky top-0 bg-[#0E121B] text-slate-400 border-b border-[#1F2736] text-[10px] uppercase font-bold z-10">
-                <th className="py-2 px-3 w-12 text-center">DECK</th>
-                <th className="py-2 px-3">TITLE / ARTIST</th>
-                <th className="py-2 px-3 w-20 text-center">BPM</th>
-                <th className="py-2 px-3 w-16 text-center">KEY</th>
-                <th className="py-2 px-3 w-16 text-center">TIME</th>
-                <th className="py-2 px-3 w-28">WAVEFORM</th>
-                <th className="py-2 px-3 w-20 text-center">ENERGY</th>
-                <th className="py-2 px-3 w-28 text-center">LOAD TO DECK</th>
+              <tr className="sticky top-0 bg-[#0E121B] text-slate-400 border-b border-[#1F2736] text-[9px] uppercase font-bold z-10">
+                <th className="py-2 px-2 w-8 text-center">#</th>
+                <th className="py-2 px-2 w-12 text-center">ARTWORK</th>
+                <th className="py-2 px-2">TITLE / ARTIST</th>
+                <th className="py-2 px-2 w-16 text-center">BPM</th>
+                <th className="py-2 px-2 w-14 text-center">KEY</th>
+                <th className="py-2 px-2 w-14 text-center">DURATION</th>
+                <th className="py-2 px-2">WAVEFORM</th>
+                <th className="py-2 px-2 w-12 text-center">ENERGY</th>
+                <th className="py-2 px-2 w-24 text-center">LOAD TO DECK</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#171D28]">
-              {filteredTracks.map((track) => {
+              {filteredTracks.map((track, idx) => {
                 const isDeckA = deckATrackId === track.id;
                 const isDeckB = deckBTrackId === track.id;
                 const isHarmonic = activeCamelotKey && isHarmonicMatch(track.key, activeCamelotKey);
@@ -246,46 +245,46 @@ export const TrackLibrary: React.FC<TrackLibraryProps> = ({
                 return (
                   <tr
                     key={track.id}
-                    className={`hover:bg-[#131824] transition-colors group ${
-                      isDeckA ? 'bg-cyan-950/20' : isDeckB ? 'bg-fuchsia-950/20' : ''
-                    }`}
+                    className={`hover:bg-[#131824] transition-colors group ${isDeckA ? 'bg-cyan-950/20' : isDeckB ? 'bg-fuchsia-950/20' : ''} border-b`}
                   >
-                    {/* Deck Status Badge */}
-                    <td className="py-2 px-3 text-center">
-                      {isDeckA ? (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-500/40">
-                          A
-                        </span>
-                      ) : isDeckB ? (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-fuchsia-950 text-fuchsia-400 border border-fuchsia-500/40">
-                          B
-                        </span>
-                      ) : (
-                        <Disc size={13} className="mx-auto text-slate-600 group-hover:text-slate-400" />
-                      )}
+                    {/* Track Number */}
+                    <td className="py-2 px-2 text-center">
+                      <span className="text-[9px] font-mono font-semibold text-slate-400">
+                        {idx + 1}
+                      </span>
                     </td>
 
-                    {/* Track Title, Artist, Album */}
-                    <td className="py-2 px-3">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-white group-hover:text-cyan-400 transition-colors">
+                    {/* Album Artwork */}
+                    <td className="py-2 px-2 text-center">
+                      <div className="inline-block">
+                        <TrackArtwork track={track} size={40} className="mb-1" />
+                        <span className="text-[8px] text-slate-500 truncate max-w-xs" title={track.title}>
+                          {track.title.length > 20 ? track.title.substring(0, 20) + '...' : track.title}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Track Title & Artist */}
+                    <td className="py-2 px-2">
+                      <div className="flex flex-col row-span-2">
+                        <span className="font-medium text-white group-hover:text-cyan-400 transition-colors">
                           {track.title}
                         </span>
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[10px] text-slate-400">
                           {track.artist} {track.genre ? `• ${track.genre}` : ''}
                         </span>
                       </div>
                     </td>
 
                     {/* BPM */}
-                    <td className="py-2 px-3 text-center font-bold text-slate-200">
+                    <td className="py-2 px-2 text-center font-bold text-slate-200">
                       {track.bpm.toFixed(1)}
                     </td>
 
                     {/* Key with Camelot Color */}
-                    <td className="py-2 px-3 text-center">
+                    <td className="py-2 px-2 text-center">
                       <span
-                        className="px-1.5 py-0.5 rounded text-[10px] font-extrabold text-black inline-block shadow-sm"
+                        className="px-1 py-0.5 rounded text-[9px] font-extrabold text-black inline-block shadow-sm"
                         style={{ backgroundColor: getCamelotColor(track.key) }}
                       >
                         {track.key}
@@ -296,22 +295,22 @@ export const TrackLibrary: React.FC<TrackLibraryProps> = ({
                     </td>
 
                     {/* Duration */}
-                    <td className="py-2 px-3 text-center text-slate-400">
+                    <td className="py-2 px-2 text-center text-slate-400">
                       {formatDuration(track.duration)}
                     </td>
 
                     {/* Mini Waveform preview */}
-                    <td className="py-2 px-3">
-                      <div className="w-24 h-4 bg-[#090C12] rounded flex items-center px-1 gap-[1px] overflow-hidden border border-[#1A2230]">
+                    <td className="py-2 px-2">
+                      <div className="w-20 h-3 bg-[#090C12] rounded flex items-center px-1 gap-[1px] overflow-hidden border border-[#1A2230]">
                         {track.waveformData ? (
-                          Array.from({ length: 24 }).map((_, idx) => {
-                            const dataIdx = Math.floor((idx / 24) * track.waveformData!.length);
+                          Array.from({ length: 20 }).map((_, i) => {
+                            const dataIdx = Math.floor((i / 20) * track.waveformData!.length);
                             const val = track.waveformData![dataIdx] || 0.2;
                             return (
                               <div
-                                key={idx}
+                                key={i}
                                 className="flex-1 bg-cyan-500/80 rounded-[0.5px]"
-                                style={{ height: `${Math.max(2, Math.round(val * 14))}px` }}
+                                style={{ height: `${Math.max(2, Math.round(val * 12))}px` }}
                               />
                             );
                           })
@@ -322,7 +321,7 @@ export const TrackLibrary: React.FC<TrackLibraryProps> = ({
                     </td>
 
                     {/* Energy Level */}
-                    <td className="py-2 px-3 text-center">
+                    <td className="py-2 px-2 text-center">
                       <div className="flex items-center justify-center gap-0.5">
                         {Array.from({ length: 5 }).map((_, i) => (
                           <div
@@ -338,23 +337,21 @@ export const TrackLibrary: React.FC<TrackLibraryProps> = ({
                     </td>
 
                     {/* Load Deck Buttons */}
-                    <td className="py-2 px-3 text-center">
+                    <td className="py-2 px-2 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => onLoadTrackA(track)}
                           title="Load track to Deck A"
-                          className="px-2 py-1 rounded text-[10px] font-bold bg-[#14202C] hover:bg-cyan-950 text-cyan-400 border border-cyan-500/40 hover:border-cyan-400 transition-all flex items-center gap-1"
+                          className="px-2 py-1 rounded text-[9px] font-bold bg-[#14202C] hover:bg-cyan-950 text-cyan-400 border border-cyan-500/40 hover:border-cyan-400 transition-all flex items-center gap-1.5"
                         >
-                          <ArrowLeftCircle size={11} />
-                          <span>DECK A</span>
+                          <span className="text-[8px]">DECK A</span>
                         </button>
                         <button
                           onClick={() => onLoadTrackB(track)}
                           title="Load track to Deck B"
-                          className="px-2 py-1 rounded text-[10px] font-bold bg-[#241728] hover:bg-fuchsia-950 text-fuchsia-400 border border-fuchsia-500/40 hover:border-fuchsia-400 transition-all flex items-center gap-1"
+                          className="px-2 py-1 rounded text-[9px] font-bold bg-[#241728] hover:bg-fuchsia-950 text-fuchsia-400 border border-fuchsia-500/40 hover:border-fuchsia-400 transition-all flex items-center gap-1.5"
                         >
-                          <span>DECK B</span>
-                          <ArrowRightCircle size={11} />
+                          <span className="text-[8px]">DECK B</span>
                         </button>
                       </div>
                     </td>

@@ -15,7 +15,7 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
   deck,
   colorScheme,
   zoom,
-  height = 96,
+  height = 88,
   onSeek,
   onScratch,
   showBeatGrid = true,
@@ -24,11 +24,11 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
   const isDraggingRef = useRef(false);
   const lastMouseXRef = useRef(0);
 
-  const primaryColor = colorScheme === 'cyan' ? '#00E5FF' : '#D946EF';
-  const midColor = colorScheme === 'cyan' ? '#0284C7' : '#8B5CF6';
-  const bassColor = colorScheme === 'cyan' ? '#38BDF8' : '#F43F5E';
-  const gridColor = colorScheme === 'cyan' ? 'rgba(0, 229, 255, 0.25)' : 'rgba(217, 70, 239, 0.25)';
-  const playheadGlow = colorScheme === 'cyan' ? 'rgba(0, 229, 255, 0.8)' : 'rgba(217, 70, 239, 0.8)';
+  // Cohesive professional colors
+  const primaryColor = colorScheme === 'cyan' ? '#20C8F4' : '#A855F7';
+  const midColor = colorScheme === 'cyan' ? '#15758E' : '#6A2A9B';
+  const bassColor = colorScheme === 'cyan' ? '#0F4453' : '#451765';
+  const gridColor = colorScheme === 'cyan' ? 'rgba(32, 200, 244, 0.25)' : 'rgba(168, 85, 247, 0.25)';
 
   // Draw 60fps scrolling waveform synced to deck.currentTime
   const render = useCallback(() => {
@@ -42,18 +42,18 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
     const centerY = h / 2;
 
     // Clear background
-    ctx.fillStyle = '#0B0E14';
+    ctx.fillStyle = '#0B111A';
     ctx.fillRect(0, 0, width, h);
 
     const track = deck.track;
     if (!track || !track.waveformData) {
       // Empty deck placeholder
-      ctx.fillStyle = '#1A212E';
+      ctx.fillStyle = '#141F30';
       ctx.fillRect(0, centerY - 1, width, 2);
-      ctx.font = '11px "JetBrains Mono", monospace';
-      ctx.fillStyle = '#4B5565';
+      ctx.font = '12px "Inter", sans-serif';
+      ctx.fillStyle = '#73849B';
       ctx.textAlign = 'center';
-      ctx.fillText('NO TRACK LOADED IN DECK ' + deck.id, width / 2, centerY + 4);
+      ctx.fillText(`No track loaded in Deck ${deck.id}`, width / 2, centerY + 4);
       return;
     }
 
@@ -75,7 +75,7 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
       const loopStartX = playheadX + ((deck.loop.start - currentTime) * zoom);
       const loopEndX = playheadX + ((deck.loop.end - currentTime) * zoom);
 
-      ctx.fillStyle = colorScheme === 'cyan' ? 'rgba(0, 229, 255, 0.12)' : 'rgba(217, 70, 239, 0.12)';
+      ctx.fillStyle = colorScheme === 'cyan' ? 'rgba(32, 200, 244, 0.12)' : 'rgba(168, 85, 247, 0.12)';
       ctx.fillRect(loopStartX, 0, loopEndX - loopStartX, h);
 
       // Loop boundaries
@@ -105,7 +105,7 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
         if (x < -10 || x > width + 10) continue;
 
         const isBar = b % 4 === 0;
-        ctx.strokeStyle = isBar ? gridColor : 'rgba(255, 255, 255, 0.08)';
+        ctx.strokeStyle = isBar ? gridColor : 'rgba(255, 255, 255, 0.05)';
         ctx.lineWidth = isBar ? 1.5 : 0.8;
 
         ctx.beginPath();
@@ -115,11 +115,11 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
 
         // Bar numbers
         if (isBar && b >= 0) {
-          ctx.font = '9px "JetBrains Mono", monospace';
-          ctx.fillStyle = isBar ? (colorScheme === 'cyan' ? '#00E5FF' : '#EC4899') : '#64748B';
+          ctx.font = '10px "JetBrains Mono", monospace';
+          ctx.fillStyle = isBar ? primaryColor : '#73849B';
           ctx.textAlign = 'center';
           const barNum = Math.floor(b / 4) + 1;
-          ctx.fillText(String(barNum), x, 11);
+          ctx.fillText(String(barNum), x, 12);
         }
       }
     }
@@ -137,15 +137,13 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
       if (pointIdx < 0 || pointIdx >= totalPoints) continue;
 
       const amp = waveform[pointIdx];
-      const barHeight = Math.max(3, amp * (h - 18));
+      const barHeight = Math.max(3, amp * (h - 20));
 
-      // 3-Band Color blending
       if (bands) {
         const low = bands.low[pointIdx] || 0;
         const mid = bands.mid[pointIdx] || 0;
         const high = bands.high[pointIdx] || 0;
 
-        // Draw layered frequencies: Low (Center), Mid, High
         const lowH = low * (h * 0.45);
         const midH = mid * (h * 0.35);
         const highH = high * (h * 0.25);
@@ -158,12 +156,11 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
         ctx.fillStyle = midColor;
         ctx.fillRect(x, centerY - midH / 2, barWidth, midH);
 
-        // High layer (bright edges)
+        // High layer (crisp accent)
         ctx.fillStyle = primaryColor;
         ctx.fillRect(x, centerY - (barHeight / 2), barWidth, Math.max(2, highH));
         ctx.fillRect(x, centerY + (barHeight / 2) - highH, barWidth, Math.max(2, highH));
       } else {
-        // Monochromatic gradient fallback
         ctx.fillStyle = primaryColor;
         ctx.fillRect(x, centerY - barHeight / 2, barWidth, barHeight);
       }
@@ -174,7 +171,6 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
       deck.hotCues.forEach((cue) => {
         const cueX = playheadX + ((cue.position - currentTime) * zoom);
         if (cueX >= -20 && cueX <= width + 20) {
-          // Flag pole
           ctx.strokeStyle = cue.color;
           ctx.lineWidth = 1.5;
           ctx.beginPath();
@@ -193,8 +189,7 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
           ctx.closePath();
           ctx.fill();
 
-          // Cue ID
-          ctx.fillStyle = '#000000';
+          ctx.fillStyle = '#080D16';
           ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'left';
           ctx.fillText(String(cue.id), cueX + 3, 12);
@@ -202,9 +197,7 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
       });
     }
 
-    // 5. Center Playhead Laser Marker
-    ctx.shadowColor = playheadGlow;
-    ctx.shadowBlur = 8;
+    // 5. Center Playhead Marker (Clean, precise line)
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -212,24 +205,22 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
     ctx.lineTo(playheadX, h);
     ctx.stroke();
 
-    // Top and bottom triangular playhead indicators
+    // Clean top and bottom triangular markers
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
-    ctx.moveTo(playheadX - 5, 0);
-    ctx.lineTo(playheadX + 5, 0);
-    ctx.lineTo(playheadX, 7);
+    ctx.moveTo(playheadX - 4, 0);
+    ctx.lineTo(playheadX + 4, 0);
+    ctx.lineTo(playheadX, 6);
     ctx.closePath();
     ctx.fill();
 
     ctx.beginPath();
-    ctx.moveTo(playheadX - 5, h);
-    ctx.lineTo(playheadX + 5, h);
-    ctx.lineTo(playheadX, h - 7);
+    ctx.moveTo(playheadX - 4, h);
+    ctx.lineTo(playheadX + 4, h);
+    ctx.lineTo(playheadX, h - 6);
     ctx.closePath();
     ctx.fill();
-
-    ctx.shadowBlur = 0; // Reset shadow
-  }, [deck, colorScheme, zoom, height, showBeatGrid, primaryColor, midColor, bassColor, gridColor, playheadGlow]);
+  }, [deck, colorScheme, zoom, height, showBeatGrid, primaryColor, midColor, bassColor, gridColor]);
 
   // Animation frame loop
   useEffect(() => {
@@ -258,7 +249,6 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Mouse interaction: Drag to scrub / scratch / seek
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = true;
     lastMouseXRef.current = e.clientX;
@@ -269,7 +259,6 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
     const deltaX = e.clientX - lastMouseXRef.current;
     lastMouseXRef.current = e.clientX;
 
-    // Convert pixel delta to time delta
     const timeDelta = -deltaX / zoom;
     const newTime = Math.max(0, Math.min(deck.currentTime + timeDelta, deck.track.duration));
     onSeek(newTime);
@@ -295,7 +284,7 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
 
   return (
     <div 
-      className="relative w-full overflow-hidden rounded bg-[#090B10] border border-[#1F2633] cursor-ew-resize select-none"
+      className="relative w-full overflow-hidden rounded-md bg-[#0B111A] border border-[#26364A] cursor-ew-resize select-none"
       style={{ height }}
     >
       <canvas
@@ -307,13 +296,13 @@ export const ScrollingWaveform: React.FC<ScrollingWaveformProps> = ({
         onMouseLeave={handleMouseUp}
         onClick={handleClick}
       />
-      {/* Deck Indicator Watermark */}
-      <div className={`absolute top-1.5 left-2 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider uppercase ${
+      {/* Clean Deck Badge */}
+      <div className={`absolute top-2 left-2.5 px-2 py-0.5 rounded text-[10px] font-mono font-semibold tracking-wider uppercase border ${
         colorScheme === 'cyan' 
-          ? 'bg-cyan-950/80 text-cyan-400 border border-cyan-500/30' 
-          : 'bg-fuchsia-950/80 text-fuchsia-400 border border-fuchsia-500/30'
+          ? 'bg-[#141F30] text-[#20C8F4] border-[#20C8F4]/30' 
+          : 'bg-[#141F30] text-[#A855F7] border-[#A855F7]/30'
       }`}>
-        DECK {deck.id}
+        Deck {deck.id}
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ export const VuMeter: React.FC<VuMeterProps> = ({
   level,
   segments = 14,
   height = 140,
-  width = 8,
+  width = 6,
   label,
 }) => {
   // Clamp level to [0, 1.1]
@@ -22,38 +22,33 @@ export const VuMeter: React.FC<VuMeterProps> = ({
   return (
     <div className="flex flex-col items-center">
       {label && (
-        <span className="text-[8px] font-mono font-bold text-slate-500 mb-0.5">
+        <span className="text-[9px] font-mono font-medium text-[#73849B] mb-1">
           {label}
         </span>
       )}
       <div
-        style={{ height, width }}
-        className="flex flex-col-reverse justify-between bg-[#080B10] p-[1.5px] rounded border border-[#1A212E]"
+        style={{ height, width: width + 4 }}
+        className="flex flex-col-reverse justify-between bg-[#0B111A] p-[2px] rounded border border-[#26364A]"
       >
         {Array.from({ length: segments }).map((_, i) => {
           const isActive = i < activeSegments;
           const isClip = i >= segments - 2; // top 2 are red
           const isWarn = i >= segments - 5 && i < segments - 2; // middle 3 are amber
 
-          let activeBg = '#10B981'; // Green
-          let activeGlow = 'rgba(16, 185, 129, 0.6)';
-
+          let activeBg = '#34D399'; // Success green
           if (isClip) {
-            activeBg = '#EF4444'; // Red
-            activeGlow = 'rgba(239, 68, 68, 0.8)';
+            activeBg = '#F87171'; // Error red
           } else if (isWarn) {
-            activeBg = '#F59E0B'; // Amber
-            activeGlow = 'rgba(245, 158, 11, 0.7)';
+            activeBg = '#FBBF24'; // Warning amber
           }
 
           return (
             <div
               key={i}
-              className="w-full rounded-[0.5px] transition-all duration-75"
+              className="w-full rounded-[1px] transition-colors duration-75"
               style={{
-                height: `${Math.floor((height - 10) / segments)}px`,
-                backgroundColor: isActive ? activeBg : '#141822',
-                boxShadow: isActive ? `0 0 4px ${activeGlow}` : 'none',
+                height: `${Math.floor((height - 12) / segments)}px`,
+                backgroundColor: isActive ? activeBg : '#141F30',
               }}
             />
           );
@@ -62,4 +57,3 @@ export const VuMeter: React.FC<VuMeterProps> = ({
     </div>
   );
 };
-

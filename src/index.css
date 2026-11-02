@@ -4,63 +4,103 @@
 
 :root {
   color-scheme: dark;
+  --app-bg: #07090D;
+  --panel-bg: #0D1118;
+  --secondary-panel: #111722;
+  --elevated-panel: #161D29;
+  --border-color: #252D3A;
+  --text-primary: #F4F7FC;
+  --text-secondary: #A7B1C2;
+  --text-muted: #8490A3;
+  --deck-a: #00E5FF;
+  --deck-b: #8B5CF6;
+  --glow-cyan: rgba(0, 229, 255, 0.4);
+  --glow-violet: rgba(139, 92, 246, 0.4);
+  --success: #37F59A;
+  --warning: #FFBF47;
+  --error: #FF3B57;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  background-color: #090B10;
+  background-color: var(--app-bg);
+  color: var(--text-primary);
   user-select: none;
   -webkit-user-select: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbars for DJ tables and crates */
+/* Premium dark scrollbars */
 ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--app-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #2A3342;
+  border-radius: 4px;
+  border: 2px solid var(--app-bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3B4759;
+}
+::-webkit-scrollbar-corner {
+  background: var(--app-bg);
+}
+
+/* Ultra-thin scrollbar for compact tables */
+.scroll-slim::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
-::-webkit-scrollbar-track {
-  background: #090B10;
-}
-::-webkit-scrollbar-thumb {
-  background: #252B36;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+.scroll-slim::-webkit-scrollbar-thumb {
+  border: none;
 }
 
-/* Vinyl groove texture overlay */
+/* Vinyl groove texture — concentric rings with radial sheen */
 .vinyl-grooves {
-  background: radial-gradient(circle, 
-    #111317 0%, 
-    #181c24 8%, 
-    #0f1217 12%, 
-    #1f242e 16%, 
-    #0c0f14 20%, 
-    #252b36 25%, 
-    #11151d 30%, 
-    #212836 38%, 
-    #090b10 46%, 
-    #262f40 55%, 
-    #111620 65%, 
-    #2d374d 75%, 
-    #090b10 88%, 
-    #1e2533 96%, 
-    #07080c 100%
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255,255,255,0.07) 0%, transparent 42%),
+    repeating-radial-gradient(circle,
+      #12161C 0px, #182029 2px, #101419 4px, #171E27 6px
+    );
+}
+
+/* Subtle sheen sweep across the platter */
+.vinyl-sheen {
+  background: conic-gradient(
+    from 210deg,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.09) 40deg,
+    transparent 95deg,
+    transparent 180deg,
+    rgba(255, 255, 255, 0.05) 230deg,
+    transparent 290deg
   );
 }
 
-/* Tactile button bevels */
-.dj-button-active {
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7), 0 0 10px rgba(0, 229, 255, 0.5);
+/* Micro-label used across hardware controls */
+.hw-label {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-/* Custom range input faders */
+/* Clean vertical range input faders */
 input[type="range"].vertical-fader {
   -webkit-appearance: none;
   appearance: none;
   writing-mode: vertical-lr;
   direction: rtl;
-  width: 32px;
+  width: 30px;
   background: transparent;
   cursor: pointer;
 }
@@ -68,16 +108,15 @@ input[type="range"].vertical-fader {
 input[type="range"].horizontal-fader {
   -webkit-appearance: none;
   appearance: none;
-  height: 24px;
+  height: 26px;
   background: transparent;
   cursor: pointer;
 }
 
-/* Range input track & thumb styling */
 input[type="range"]::-webkit-slider-runnable-track {
-  background: #0d1117;
-  border: 1px solid #1f2633;
-  border-radius: 4px;
+  background: #0A0E14;
+  border: 1px solid #2A3444;
+  border-radius: 3px;
 }
 
 input[type="range"].horizontal-fader::-webkit-slider-runnable-track {
@@ -86,14 +125,19 @@ input[type="range"].horizontal-fader::-webkit-slider-runnable-track {
 
 input[type="range"].horizontal-fader::-webkit-slider-thumb {
   -webkit-appearance: none;
-  height: 28px;
-  width: 14px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #4b5563 0%, #1f2937 50%, #111827 100%);
-  border: 1px solid #6b7280;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.3);
+  height: 26px;
+  width: 16px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #2E3A4C 0%, #232D3C 100%);
+  border: 1px solid #44536A;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
   margin-top: -11px;
   cursor: grab;
+  transition: border-color 0.15s;
+}
+
+input[type="range"].horizontal-fader::-webkit-slider-thumb:hover {
+  border-color: #5E7394;
 }
 
 input[type="range"].horizontal-fader::-webkit-slider-thumb:active {
@@ -101,21 +145,52 @@ input[type="range"].horizontal-fader::-webkit-slider-thumb:active {
   border-color: #00E5FF;
 }
 
-/* Monospace LED display text */
-.led-display {
-  font-family: 'JetBrains Mono', monospace;
-  font-feature-settings: 'tnum' on, 'zero' on;
+input[type="range"].vertical-fader::-webkit-slider-runnable-track {
+  width: 5px;
 }
 
-/* Glass panel subtle surface */
-.glass-panel {
-  background: rgba(17, 21, 29, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid #252B36;
+input[type="range"].vertical-fader::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 15px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #313E52 0%, #242E3E 100%);
+  border: 1px solid #4A5A74;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+  margin-left: -12px;
+  cursor: grab;
+  transition: border-color 0.15s;
 }
 
-/* Rotary knob indicator */
-.knob-marker {
-  transform-origin: center center;
+input[type="range"].vertical-fader::-webkit-slider-thumb:hover {
+  border-color: #5E7394;
+}
+
+input[type="range"].vertical-fader::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+
+/* Monospace numerals for meters & time readouts */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Restrained ambient stage lighting */
+.stage-glow-a {
+  background: radial-gradient(ellipse 60% 50% at 18% 42%, rgba(0, 229, 255, 0.055), transparent 70%);
+}
+.stage-glow-b {
+  background: radial-gradient(ellipse 60% 50% at 82% 42%, rgba(139, 92, 246, 0.07), transparent 70%);
+}
+.stage-vignette {
+  background: radial-gradient(ellipse 120% 90% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
