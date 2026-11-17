@@ -14,11 +14,7 @@ interface CentralMixerProps {
 }
 
 const channelAPrimary = '#06B6D4';
-const channelASecondary = '#15758E';
-const channelAGlow = 'rgba(6, 182, 212, 0.35)';
 const channelBPrimary = '#8B5CF6';
-const channelBSecondary = '#6A2A9B';
-const channelBGlow = 'rgba(139, 92, 246, 0.35)';
 
 export const CentralMixer: React.FC<CentralMixerProps> = ({
   channelA,
