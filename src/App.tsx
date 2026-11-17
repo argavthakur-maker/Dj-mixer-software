@@ -68,7 +68,6 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [libraryCollapsed, setLibraryCollapsed] = useState(false);
 
   const [deckA, setDeckA] = useState<DeckState>(() => createInitialDeck('A', 128));
   const [deckB, setDeckB] = useState<DeckState>(() => createInitialDeck('B', 124));
@@ -327,6 +326,40 @@ export function App() {
     handleSetAutoLoop(deckId, Math.min(64, deck.loop.lengthInBeats * 2));
   }, [deckA, deckB, handleSetAutoLoop]);
 
+  // Manual loop points are captured from the current playhead position.
+  const handleSetLoopIn = useCallback((deckId: 'A' | 'B') => {
+    const deck = deckId === 'A' ? deckA : deckB;
+    const position = Math.max(0, Math.min(deck.currentTime, deck.track?.duration ?? deck.currentTime));
+    const nextLoop: LoopState = {
+      ...deck.loop,
+      active: false,
+      start: position,
+      end: position,
+    };
+
+    (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({ ...prev, loop: nextLoop }));
+    if (deck.isPlaying) audioEngine.play(deckId, position, nextLoop);
+  }, [deckA, deckB]);
+
+  const handleSetLoopOut = useCallback((deckId: 'A' | 'B') => {
+    const deck = deckId === 'A' ? deckA : deckB;
+    if (!deck.track || deck.currentBpm <= 0) return;
+
+    const end = Math.max(0, Math.min(deck.currentTime, deck.track.duration));
+    const start = deck.loop.start;
+    if (end <= start) return;
+
+    const nextLoop: LoopState = {
+      active: true,
+      start,
+      end,
+      lengthInBeats: ((end - start) * deck.currentBpm) / 60,
+    };
+
+    (deckId === 'A' ? setDeckA : setDeckB)((prev) => ({ ...prev, loop: nextLoop }));
+    if (deck.isPlaying) audioEngine.play(deckId, start, nextLoop);
+  }, [deckA, deckB]);
+
   // Hot Cues Handlers
   const handleJumpToCue = useCallback((deckId: 'A' | 'B', cue: HotCue) => {
     handleSeek(deckId, cue.position);
@@ -515,6 +548,8 @@ export function App() {
                 onToggleLoop={() => handleToggleLoop('A')}
                 onHalveLoop={() => handleHalveLoop('A')}
                 onDoubleLoop={() => handleDoubleLoop('A')}
+                onSetLoopIn={() => handleSetLoopIn('A')}
+                onSetLoopOut={() => handleSetLoopOut('A')}
                 onJumpToCue={(c) => handleJumpToCue('A', c)}
                 onSetCue={(id) => handleSetCue('A', id)}
                 onDeleteCue={(id) => handleDeleteCue('A', id)}
@@ -566,6 +601,8 @@ export function App() {
                 onToggleLoop={() => handleToggleLoop('B')}
                 onHalveLoop={() => handleHalveLoop('B')}
                 onDoubleLoop={() => handleDoubleLoop('B')}
+                onSetLoopIn={() => handleSetLoopIn('B')}
+                onSetLoopOut={() => handleSetLoopOut('B')}
                 onJumpToCue={(c) => handleJumpToCue('B', c)}
                 onSetCue={(id) => handleSetCue('B', id)}
                 onDeleteCue={(id) => handleDeleteCue('B', id)}
@@ -583,8 +620,6 @@ export function App() {
             >
               <TrackLibrary
                 tracks={tracks}
-                collapsedRow={libraryCollapsed}
-                onToggleCollapsed={() => setLibraryCollapsed((prev) => !prev)}
                 deckATrackId={deckA.track?.id ?? null}
                 deckBTrackId={deckB.track?.id ?? null}
                 onLoadTrackA={(t) => loadTrackToDeck('A', t)}
