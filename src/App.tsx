@@ -68,6 +68,7 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [libraryCollapsed, setLibraryCollapsed] = useState(false);
 
   const [deckA, setDeckA] = useState<DeckState>(() => createInitialDeck('A', 128));
   const [deckB, setDeckB] = useState<DeckState>(() => createInitialDeck('B', 124));
