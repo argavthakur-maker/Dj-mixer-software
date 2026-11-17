@@ -11,6 +11,7 @@ interface RotaryKnobProps {
   unit?: string;
   size?: number;
   color?: string;
+  className?: string;
   onChange: (newValue: number) => void;
 }
 
@@ -24,6 +25,7 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
   unit = '',
   size = 38,
   color = '#00E5FF',
+  className = '',
   onChange,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -97,9 +99,7 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
   const filledLength = norm * arcLength;
 
   // Handle center tick angle for bipolar controls
-    centerAngle !== null
-      ? (-135 + centerNorm! * 270) * (Math.PI / 180)
-      : null;
+  const centerTick = centerAngle !== null ? centerAngle * (Math.PI / 180) : null;
 
   return (
     <div className="flex flex-col items-center select-none py-0.5">
@@ -122,7 +122,7 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
         style={{ width: size, height: size }}
         className={`relative rounded-full cursor-ns-resize outline-none transition-[box-shadow] ${
           isDragging ? '' : 'hover:brightness-110'
-        }`}
+        } ${className}`}
       >
         {/* Value arc (SVG) */}
         <svg width={size} height={size} className="absolute inset-0 pointer-events-none">
